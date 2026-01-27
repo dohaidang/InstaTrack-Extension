@@ -1,0 +1,17 @@
+{
+    "manifest_version": 3,
+    "name": "Instagram Tracker",
+    "version": "1.0",
+    "permissions": [
+        "storage",
+        "scripting",
+        "alarms"
+    ],
+    "host_permissions": [
+        "https://www.instagram.com/*"
+    ],
+    "action": {
+        "default_popup": "index.html",
+        "default_title": "Open Tracker"
+    }
+}
