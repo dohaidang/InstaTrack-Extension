@@ -1,0 +1,15 @@
+# local-only tooling
+.agent/
+.manager/
+skill-library/
+
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+
+# env files
+.env
+.env.local
