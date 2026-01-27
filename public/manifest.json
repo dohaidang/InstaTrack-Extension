@@ -13,5 +13,31 @@
     "action": {
         "default_popup": "index.html",
         "default_title": "Open Tracker"
-    }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.instagram.com/*"
+            ],
+            "js": [
+                "src/content/selectors.js",
+                "src/content/modules/utils.js",
+                "src/content/modules/interactions.js",
+                "src/content/modules/scanner.js",
+                "src/content/modules/api_scanner.js",
+                "src/content/index.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "src/content/modules/*.js"
+            ],
+            "matches": [
+                "https://www.instagram.com/*"
+            ]
+        }
+    ]
 }
