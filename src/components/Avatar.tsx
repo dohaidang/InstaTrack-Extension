@@ -20,10 +20,15 @@ const Avatar: React.FC<AvatarProps> = ({ src, size = 'md', hasStory = false, cla
   return (
     <div className={`relative ${className}`}>
       <div className={`${hasStory ? 'p-[2px] bg-gradient-to-tr from-[#f9ce34] via-[#ee2b8c] to-[#6228d7]' : ''} rounded-full`}>
-        <div className={`bg-white dark:bg-background-dark p-[2px] rounded-full`}>
-          <div 
-            className={`${containerSize} bg-center bg-no-repeat bg-cover rounded-full`}
-            style={{ backgroundImage: `url("${src}")` }}
+        <div className={`bg-white dark:bg-background-dark p-[2px] rounded-full overflow-hidden ${containerSize}`}>
+          <img 
+            src={src} 
+            alt="User Avatar"
+            className="w-full h-full object-cover rounded-full"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://picsum.photos/200';
+            }}
           />
         </div>
       </div>

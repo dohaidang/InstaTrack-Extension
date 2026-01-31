@@ -9,7 +9,7 @@
 
     // Constants
     const FOLLOWERS_HASH = 'c76146de99bb02f6415203be841dd25a'; // Hash for edge_followed_by
-    const FOLLOWING_HASH = 'd04b0a864b4b54837c0d870b0e77e07f'; // Hash for edge_follow
+    const FOLLOWING_HASH = '3dec7e2c57367ef3da3d987d89f9dbc8'; // Hash for edge_follow
     const PROFILE_DOC_ID = '7950326061742202';
 
     /**
@@ -192,7 +192,7 @@
      * Fetch Following Page
      */
     async function fetchFollowingPage(userId, first = 50, after = null) {
-        const variables = { id: userId, include_reel: true, fetch_mutual: false, first: first };
+        const variables = { id: userId, include_reel: true, first: first };
         if (after) variables.after = after;
         const url = `https://www.instagram.com/graphql/query/?query_hash=${FOLLOWING_HASH}&variables=${encodeURIComponent(JSON.stringify(variables))}`;
 
