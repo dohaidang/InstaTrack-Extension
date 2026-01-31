@@ -19,42 +19,44 @@ const Dashboard = () => {
     const { stats, loading } = useFollowerData();
     const [isScanning, setIsScanning] = useState(false);
     const [statusText, setStatusText] = useState("Ready to scan");
+    const [targetUsername, setTargetUsername] = useState("");
 
-    const handleToggleScan = async () => {
+    const handleStartCrawl = async () => {
+        if (!targetUsername) {
+            setStatusText("Enter username first");
+            return;
+        }
+
         try {
+            setStatusText("Launching...");
+            setIsScanning(true);
+
+            // Set flags for content script to pick up
+            await chrome.storage.local.set({ 
+                targetUsername: targetUsername, 
+                startOnLoad: true 
+            });
+
+            const url = `https://www.instagram.com/${targetUsername}/`;
+
+            // Check if we have an active tab
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             
-            // Allow scanning on any Instagram page now (Self-Scan), but user must be on Instagram domain
-            if (!tab?.url?.includes("instagram.com")) {
-                const confirm = window.confirm("You need to be on Instagram.com to scan. Open Instagram now?");
-                if(confirm) {
-                    window.open("https://www.instagram.com", "_blank");
-                } else {
-                    setStatusText("Open Instagram.com first");
-                }
-                return;
-            }
-
-            if (!isScanning) {
-                setStatusText("Initializing Scan...");
-                await chrome.tabs.sendMessage(tab.id!, { action: "START_SCAN" });
-                setIsScanning(true);
-                setStatusText("Scanning...");
+            if (tab && tab.url && tab.url.includes("instagram.com")) {
+                 // Navigate current tab
+                 await chrome.tabs.update(tab.id!, { url: url });
             } else {
-                await chrome.tabs.sendMessage(tab.id!, { action: "STOP_SCAN" });
-                setIsScanning(false);
-                setStatusText("Scan paused");
+                 // Open new tab
+                 await chrome.tabs.create({ url: url });
             }
+            
+            setStatusText("Waiting for page load...");
         } catch (error) {
-            console.error("Scan Failed:", error);
-            // Often "Receiving end does not exist" if content script isn't ready
-            setStatusText("Error: Please reload Instagram page");
+            console.error("Launch Failed:", error);
+            setStatusText("Error launching");
             setIsScanning(false);
         }
     };
-
-    // Calculate percentage or progress if needed (optional)
-    // For now, simple display
 
   return (
     <>
@@ -68,7 +70,7 @@ const Dashboard = () => {
             <span className="material-symbols-outlined">arrow_back_ios_new</span>
           </div>
           <h2 className="text-white text-lg font-bold leading-tight tracking-tight flex-1 text-center">
-            @{stats.username || 'user'}
+            @{stats.username || targetUsername || 'user'}
           </h2>
           <div className="flex w-10 items-center justify-end">
             <button className="flex items-center justify-center rounded-full size-10 bg-white/20 backdrop-blur-md text-white">
@@ -92,7 +94,9 @@ const Dashboard = () => {
               className="border-4 border-transparent"
             />
             <div className="flex flex-col items-center text-white">
-              <p className="text-xl font-bold">--</p> {/* Following not fetched yet */}
+              <p className="text-xl font-bold">
+                 {stats.followingCount !== null ? stats.followingCount : '--'}
+              </p>
               <p className="text-xs font-medium opacity-90 uppercase tracking-wider">Following</p>
             </div>
           </div>
@@ -129,19 +133,36 @@ const Dashboard = () => {
             </div>
           </div>
           
+           {/* Input Field */}
+           <div className="mb-4">
+             <input 
+                type="text" 
+                placeholder="Enter Instagram Username (e.g., cristiano)"
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-insta-orange"
+                value={targetUsername}
+                onChange={(e) => setTargetUsername(e.target.value)}
+             />
+           </div>
+
           <button 
-            onClick={handleToggleScan}
+            onClick={handleStartCrawl}
             className={`w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors ${isScanning ? 'bg-insta-orange/10 hover:bg-insta-orange/20 text-insta-orange' : 'bg-primary text-white hover:bg-primary/90'}`}
           >
-            <span className="material-symbols-outlined">{isScanning ? 'pause_circle' : 'play_circle'}</span>
-            {isScanning ? 'Pause' : 'Scan Now'}
+            <span className="material-symbols-outlined">{isScanning ? 'sync' : 'play_circle'}</span>
+            {isScanning ? 'Scanning Task Started...' : 'Auto Scan'}
           </button>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
           <Link to="/stats">
-            <StatCard icon="group" count="-" label="Mutual friends" colorClass="text-blue-500" iconBg="bg-blue-50 dark:bg-blue-900/20" />
+            <StatCard 
+                 icon="group" 
+                 count={stats.mutualCount} 
+                 label="Mutual friends" 
+                 colorClass="text-blue-500" 
+                 iconBg="bg-blue-50 dark:bg-blue-900/20" 
+            />
           </Link>
           <Link to="/stats">
             <StatCard 
@@ -162,7 +183,13 @@ const Dashboard = () => {
             />
           </Link>
           <Link to="/stats">
-            <StatCard icon="person_search" count="-" label="Not following back" colorClass="text-orange-500" iconBg="bg-orange-50 dark:bg-orange-900/20" />
+            <StatCard 
+                 icon="person_search" 
+                 count={stats.notFollowingBackCount} 
+                 label="Not following back" 
+                 colorClass="text-orange-500" 
+                 iconBg="bg-orange-50 dark:bg-orange-900/20" 
+            />
           </Link>
         </div>
 

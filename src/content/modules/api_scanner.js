@@ -1,154 +1,235 @@
 /**
  * API Scanner Module
- * Fetches followers using Instagram's internal GraphQL API.
+ * Fetches followers AND following using Instagram's public Web API and internal GraphQL.
+ * Calculates Diff (Lost, New, Mutual, NotFollowingBack) and saves to storage.
  */
 (function () {
     window.IG_API = window.IG_API || {};
     const { delay, randomDelay, log, error, getCookie } = window.IG_UTILS || {};
 
-    const QUERY_HASH = 'c76146de99bb02f6415203be841dd25a'; // Hash for edge_followed_by
+    // Constants
+    const FOLLOWERS_HASH = 'c76146de99bb02f6415203be841dd25a'; // Hash for edge_followed_by
+    const FOLLOWING_HASH = 'd04b0a864b4b54837c0d870b0e77e07f'; // Hash for edge_follow
+    const PROFILE_DOC_ID = '7950326061742202';
 
     /**
-     * Fetch a single page of followers
+     * Helpers for headers
      */
-    async function fetchFollowersPage(userId, first = 50, after = null) {
-        const variables = {
-            id: userId,
-            include_reel: true,
-            fetch_mutual: false,
-            first: first,
+    function getCommonHeaders() {
+        return {
+            'x-csrftoken': getCookie('csrftoken'),
+            'x-ig-app-id': '936619743392459',
+            'x-requested-with': 'XMLHttpRequest',
+            'x-fb-lsd': getLSD(),
+            'content-type': 'application/x-www-form-urlencoded'
         };
-        if (after) variables.after = after;
+    }
 
-        const url = `https://www.instagram.com/graphql/query/?query_hash=${QUERY_HASH}&variables=${encodeURIComponent(JSON.stringify(variables))}`;
-
+    function getLSD() {
         try {
+            const scripts = document.querySelectorAll('script');
+            for (let s of scripts) {
+                if (s.textContent && s.textContent.includes('"LSD",[],{"token":"')) {
+                    const match = s.textContent.match(/"LSD",\[\],\{"token":"([^"]+)"\}/);
+                    if (match) return match[1];
+                }
+            }
+        } catch (e) { }
+        return 'AVr...'; // Placeholder
+    }
+
+    /**
+     * Step 1: Fetch User Profile
+     * Primary: Web Search/Info API
+     * Secondary: GraphQL DocID
+     * Fallback: Meta Tags/DOM (only as last resort for ID, but preferably API)
+     */
+    async function fetchUserProfile(username) {
+        log(`Fetching Profile Info for: ${username}...`);
+
+        let profile = {
+            id: null,
+            username: username,
+            fullName: null,
+            avatarUrl: null,
+            followingCount: 0,
+            followerCount: 0,
+            isPrivate: false
+        };
+
+        // 1. Primary: Web JSON API (Most reliable for public info)
+        try {
+            const url = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`;
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    'x-csrftoken': getCookie('csrftoken'),
-                    'x-ig-app-id': '936619743392459', // Common Web App ID
-                    'x-requested-with': 'XMLHttpRequest'
-                }
+                headers: getCommonHeaders(),
             });
 
             if (response.status === 401 || response.status === 403) {
-                throw new Error("Authentication failed or Rate Limited. Please login to Instagram or wait.");
+                throw new Error("Please login to Instagram");
+            }
+            if (response.status === 404) {
+                throw new Error("Username not found");
             }
 
-            if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
+            if (response.ok) {
+                const data = await response.json();
+                const user = data?.data?.user;
+                if (user) {
+                    profile.id = user.id;
+                    profile.username = user.username;
+                    profile.fullName = user.full_name;
+                    profile.avatarUrl = user.profile_pic_url;
+                    profile.followerCount = user.edge_followed_by?.count || 0;
+                    profile.followingCount = user.edge_follow?.count || 0;
+                    profile.isPrivate = user.is_private;
+                    log("Resolved Profile via Web API", profile);
+                    return profile;
+                }
             }
-
-            const json = await response.json();
-            return json;
-        } catch (err) {
-            error("API Fetch Error:", err);
-            throw err;
-        }
-    }
-
-    /**
-     * Get Current User ID from the DOM (sharedData or meta)
-     * Robust way to find who we are looking at.
-     */
-    function getTargetUserId() {
-        // 1. Try generic meta detection (often present on profile)
-        // Note: This often requires the page to be the PROFILE page of the target user.
-        // We will assume the user is ON the profile page they want to scan.
-
-        // 2. Try looking for "profilePage_" in window._sharedData (if accessible)
-        // Content script cannot access window variables directly easily without injection.
-        // So we rely on DOM hacks.
-
-        // Strategy: Look for specific meta content
-        const meta = document.querySelector('meta[property="al:ios:url"]');
-        if (meta) {
-            const content = meta.getAttribute('content');
-            // content="instagram://user?username=xxx" -> No ID here usually.
+        } catch (e) {
+            log("Web API fetch failed, trying fallback...", e);
+            if (e.message.includes("login")) throw e; // Propagate auth errors
         }
 
+        // 2. Secondary: GraphQL Doc ID strategy
+        try {
+            const variables = {
+                username: username,
+                render_surface: "PROFILE",
+                enable_integrity_filters: true
+            };
+            const body = new URLSearchParams();
+            body.append('doc_id', PROFILE_DOC_ID);
+            body.append('variables', JSON.stringify(variables));
+            body.append('lsd', getLSD());
+
+            const response = await fetch('https://www.instagram.com/graphql/query', {
+                method: 'POST', headers: getCommonHeaders(), body: body
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const user = data?.data?.user;
+                if (user) {
+                    profile.id = user.id || user.pk;
+                    profile.username = user.username;
+                    profile.fullName = user.full_name;
+                    profile.avatarUrl = user.profile_pic_url;
+                    profile.followingCount = user.edge_follow?.count || user.following_count || 0;
+                    profile.followerCount = user.edge_followed_by?.count || user.follower_count || 0;
+                    profile.isPrivate = user.is_private;
+                    log(`Resolved Profile via GraphQL`, profile);
+                    return profile;
+                }
+            }
+        } catch (e) { log("GraphQL Profile resolve error", e); }
+
+
+        // 3. Last Resort: Passive Parsing (Meta Tags / SharedData)
+        // If API fails, maybe we are ALREADY on the profile page and can just scrape ID.
+        // This is fragile but saves the day for basic ID detection.
         const metaId = document.querySelector('meta[property="instapp:owner_user_id"]');
-        if (metaId) return metaId.getAttribute('content');
+        if (metaId && metaId.content) {
+            profile.id = metaId.content;
+            log("Resolved ID via Meta Tag");
+        }
 
-        // Strategy: Look for a script containing "user_id"
-        // This is messy. Let's ask the user to input? No, automated.
-        // Ideally, we fetch the current page HTML and regex it?
+        // Try scraping numbers/avatar if ID was found via meta logic
+        if (profile.id) {
+            try {
+                const ogImage = document.querySelector('meta[property="og:image"]');
+                if (ogImage) profile.avatarUrl = ogImage.content;
 
-        // Fallback: If we are calling this, maybe we can fetch the user's profile JSON first?
-        // https://www.instagram.com/{username}/?__a=1&__d=dis (deprecated/blocked often)
+                // Try scraping counts...
+                const listItems = document.querySelectorAll('header ul li');
+                if (listItems.length >= 3) {
+                    for (let li of listItems) {
+                        const text = li.innerText.toLowerCase();
+                        if (text.includes('following')) {
+                            const spanWithTitle = li.querySelector('span[title]');
+                            let val = 0;
+                            if (spanWithTitle) val = parseCount(spanWithTitle.getAttribute('title'));
+                            else { const match = text.match(/^([0-9,KM.]+)/); if (match) val = parseCount(match[1]); }
+                            if (val > 0) profile.followingCount = val;
+                        }
+                        if (text.includes('follower')) {
+                            const spanWithTitle = li.querySelector('span[title]');
+                            let val = 0;
+                            if (spanWithTitle) val = parseCount(spanWithTitle.getAttribute('title'));
+                            else { const match = text.match(/^([0-9,KM.]+)/); if (match) val = parseCount(match[1]); }
+                            if (val > 0) profile.followerCount = val;
+                        }
+                    }
+                }
+            } catch (scrapeErr) { }
+            return profile;
+        }
 
-        throw new Error("Could not detect User ID from DOM. Please ensure you are on a Profile Page.");
+        throw new Error(`Could not resolve User Profile for ${username}. Please ensure you are logged in and the user exists.`);
     }
 
-    // Better Strategy for ID: 
-    // If we are on https://www.instagram.com/username/
-    // We can fetch `https://www.instagram.com/api/v1/users/web_profile_info/?username={username}`
-    // But that requires another endpoint.
-    // Let's rely on the user confirming ID or a cleaner extraction if possible.
-    // For now, let's implement a heuristic.
-
-    async function resolveUserId(username) {
-        const url = `https://www.instagram.com/web/search/topsearch/?context=blended&query=${username}&rank_token=0.3&include_reel=true`;
-        // This is a search API, might give ID.
-        // Creating a robust resolve function is hard without scraping.
-        // Let's try the profile page meta again.
-
-        // Actually, on modern IG, <meta property="instapp:owner_user_id" content="123" /> exists!
-        const metaId = document.querySelector('meta[property="instapp:owner_user_id"]');
-        if (metaId) return metaId.getAttribute('content');
-
-        return null; // Fail
+    function parseCount(str) {
+        if (!str) return 0;
+        str = str.replace(/,/g, '');
+        if (str.toUpperCase().includes('K')) return parseFloat(str) * 1000;
+        if (str.toUpperCase().includes('M')) return parseFloat(str) * 1000000;
+        return parseInt(str.replace(/[,.]/g, ''));
     }
 
     /**
-     * Main function: Fetch ALL followers
+     * Fetch Followers Page
      */
+    async function fetchFollowersPage(userId, first = 50, after = null) {
+        const variables = { id: userId, include_reel: true, fetch_mutual: false, first: first };
+        if (after) variables.after = after;
+        const url = `https://www.instagram.com/graphql/query/?query_hash=${FOLLOWERS_HASH}&variables=${encodeURIComponent(JSON.stringify(variables))}`;
+
+        return await fetchWithAuth(url);
+    }
+
     /**
-     * Main function: Fetch ALL followers
+     * Fetch Following Page
      */
-    async function fetchAllFollowers() {
-        // 1. Try to get ID from cookie (Self-Scan, most reliable for tracking own followers)
-        let userId = getCookie('ds_user_id');
+    async function fetchFollowingPage(userId, first = 50, after = null) {
+        const variables = { id: userId, include_reel: true, fetch_mutual: false, first: first };
+        if (after) variables.after = after;
+        const url = `https://www.instagram.com/graphql/query/?query_hash=${FOLLOWING_HASH}&variables=${encodeURIComponent(JSON.stringify(variables))}`;
 
-        if (userId) {
-            log(`Detected Authenticated User ID from cookie: ${userId}`);
-        } else {
-            // 2. Fallback to Meta Tag (Profile Scan)
-            const metaId = document.querySelector('meta[property="instapp:owner_user_id"]');
-            if (metaId) {
-                userId = metaId.getAttribute('content');
-                log(`Detected User ID from page meta: ${userId}`);
-            }
-        }
+        return await fetchWithAuth(url);
+    }
 
-        if (!userId) {
-            throw new Error("Could not detect User ID. Please login to Instagram or navigate to a profile page.");
-        }
+    async function fetchWithAuth(url) {
+        try {
+            const response = await fetch(url, { method: 'GET', headers: getCommonHeaders() });
+            if (response.status === 401 || response.status === 403) throw new Error("Authentication failed. Please login.");
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            return await response.json();
+        } catch (err) { error("API Fetch Error:", err); throw err; }
+    }
 
-        let allFollowers = [];
+    /**
+     * List Fetcher Loop
+     */
+    async function fetchList(userId, type = 'followers') {
+        let allUsers = [];
         let hasNext = true;
         let endCursor = null;
+        const fetchFunc = type === 'followers' ? fetchFollowersPage : fetchFollowingPage;
+        const edgeKey = type === 'followers' ? 'edge_followed_by' : 'edge_follow';
         let pageCount = 0;
-
-        log(`Starting API Scan for User ID: ${userId}`);
 
         while (hasNext) {
             pageCount++;
-            log(`Fetching page ${pageCount}... (Total so far: ${allFollowers.length})`);
-
-            // Throttle
+            log(`Fetching ${type} page ${pageCount}... (Total: ${allUsers.length})`);
             await randomDelay(1000, 2000);
 
             try {
-                const data = await fetchFollowersPage(userId, 50, endCursor);
-                const edgeFollowedBy = data?.data?.user?.edge_followed_by;
+                const data = await fetchFunc(userId, 50, endCursor);
+                const edge = data?.data?.user?.[edgeKey];
+                if (!edge) throw new Error("Invalid API format");
 
-                if (!edgeFollowedBy) {
-                    throw new Error("Invalid API response format (missing edge_followed_by)");
-                }
-
-                const edges = edgeFollowedBy.edges || [];
+                const edges = edge.edges || [];
                 const newNodes = edges.map(e => ({
                     id: e.node.id,
                     username: e.node.username,
@@ -156,58 +237,121 @@
                     avatarUrl: e.node.profile_pic_url
                 }));
 
-                allFollowers = [...allFollowers, ...newNodes];
+                allUsers = [...allUsers, ...newNodes];
+                hasNext = edge.page_info.has_next_page;
+                endCursor = edge.page_info.end_cursor;
 
-                const pageInfo = edgeFollowedBy.page_info;
-                hasNext = pageInfo.has_next_page;
-                endCursor = pageInfo.end_cursor;
+                // Safety break
+                // if (allUsers.length > 5000) hasNext = false; 
 
             } catch (e) {
-                error("Error during loop:", e);
-                // Retry logic could go here
-                hasNext = false; // Stop for safety
+                error(`Loop error in ${type}`, e);
+                hasNext = false;
             }
         }
-
-        // Dedupe just in case
-        const uniqueFollowers = Array.from(new Map(allFollowers.map(item => [item.id, item])).values());
-
-        log(`Scan Complete. Found ${uniqueFollowers.length} followers.`);
-        await saveSnapshot(uniqueFollowers);
-        return uniqueFollowers;
+        return allUsers;
     }
 
-    async function saveSnapshot(followers) {
-        const dateKey = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        const storage = await chrome.storage.local.get(['snapshots', 'lastSnapshotDate']);
+    /**
+     * Main Entry
+     */
+    async function runCrawler(targetUsername) {
+        let userId;
+        await delay(2000);
 
+        // Resolve User
+        let userProfile = null;
+        if (targetUsername) {
+            userProfile = await fetchUserProfile(targetUsername);
+        } else {
+            const cookieId = getCookie('ds_user_id');
+            if (cookieId) {
+                userId = cookieId;
+                userProfile = { id: userId, username: "Me", fullName: "You", avatarUrl: null, followingCount: 0, followerCount: 0 };
+            }
+        }
+        if (!userProfile || !userProfile.id) throw new Error("Could not detect User. Please login.");
+
+        userId = userProfile.id;
+        log(`Starting Crawl for ${userProfile.username} (${userId})`);
+
+        // Save Profile First
+        await chrome.storage.local.set({ ownerProfile: userProfile });
+
+        // Fetch Both Lists
+        log("Step 1: Fetching Followers...");
+        const followers = await fetchList(userId, 'followers');
+
+        log("Step 2: Fetching Following...");
+        const following = await fetchList(userId, 'following');
+
+        log(`Crawl Complete. Followers: ${followers.length}, Following: ${following.length}`);
+
+        // Save & Compute Diff
+        await processAndSaveData(followers, following);
+
+        return { followers, following };
+    }
+
+    async function processAndSaveData(currFollowers, currFollowing) {
+        const dateKey = new Date().toISOString().split('T')[0];
+        const storage = await chrome.storage.local.get(['snapshots', 'diffs']);
         const snapshots = storage.snapshots || {};
-        const lastDate = storage.lastSnapshotDate;
+        const diffs = storage.diffs || {};
 
-        // Optional: Diff
-        if (lastDate && snapshots[lastDate]) {
-            const oldList = snapshots[lastDate];
-            const oldSet = new Set(oldList.map(u => u.id));
-            const newSet = new Set(followers.map(u => u.id));
+        // Get Previous Snapshot
+        const dates = Object.keys(snapshots).sort();
+        const prevDate = dates.length > 0 ? dates[dates.length - 1] : null;
 
-            const newFollowers = followers.filter(u => !oldSet.has(u.id));
-            const unfollowers = oldList.filter(u => !newSet.has(u.id));
-
-            log(`Diff: +${newFollowers.length} new, -${unfollowers.length} unfollowed.`);
-            // Save diffs if needed
+        let prevFollowers = [];
+        if (prevDate && prevDate !== dateKey) {
+            prevFollowers = snapshots[prevDate]?.followers || [];
+        } else if (dates.length >= 2) {
+            prevFollowers = snapshots[dates[dates.length - 2]]?.followers || [];
         }
 
-        snapshots[dateKey] = followers;
+        // --- Diff Logic ---
+        const currFollowersMap = new Map(currFollowers.map(u => [u.id, u]));
+        const prevFollowersMap = new Map(prevFollowers.map(u => [u.id, u]));
+
+        const newFollowers = currFollowers.filter(u => !prevFollowersMap.has(u.id));
+        const lostFollowers = prevFollowers.filter(u => !currFollowersMap.has(u.id));
+
+        const currFollowingMap = new Map(currFollowing.map(u => [u.id, u]));
+        const mutual = currFollowers.filter(u => currFollowingMap.has(u.id));
+        const notFollowingBack = currFollowing.filter(u => !currFollowersMap.has(u.id));
+
+        const diffResult = {
+            newFollowers,
+            lostFollowers,
+            mutual,
+            notFollowingBack,
+            counts: {
+                new: newFollowers.length,
+                lost: lostFollowers.length,
+                mutual: mutual.length,
+                notFollowingBack: notFollowingBack.length
+            }
+        };
+
+        snapshots[dateKey] = {
+            followers: currFollowers,
+            following: currFollowing
+        };
+        diffs[dateKey] = diffResult;
 
         await chrome.storage.local.set({
             snapshots: snapshots,
-            lastSnapshotDate: dateKey
+            diffs: diffs,
+            lastSnapshotDate: dateKey,
+            isScanning: false
         });
-        log("Snapshot saved to Chrome Storage.");
+        log("Saved Snapshots & Diffs.", diffResult);
     }
 
     window.IG_API = {
-        fetchAllFollowers
+        runCrawler,
+        resolveUserId: fetchUserProfile
     };
 
 })();

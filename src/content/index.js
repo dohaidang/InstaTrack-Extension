@@ -15,25 +15,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     log("Message received:", request);
 
     if (request.action === "START_SCAN") {
-        // Switch to API implementation
         if (window.IG_API) {
-            window.IG_API.fetchAllFollowers()
-                .then(data => {
-                    log("API Scan finished successfully.");
-                    // Optional: Send data back?
-                })
-                .catch(err => {
-                    log("API Scan error:", err);
-                });
+            // If explicit username sent, use it, else default
+            const target = request.username || null;
+            window.IG_API.runCrawler(target)
+                .then(() => log("Crawl finished."))
+                .catch(err => log("Crawl error:", err));
             sendResponse({ status: "started_api" });
-        } else {
-            // Fallback
-            window.IG_SCANNER.startScan();
-            sendResponse({ status: "started_legacy" });
         }
-    } else if (request.action === "STOP_SCAN") {
-        window.IG_SCANNER.stopScan();
-        sendResponse({ status: "stopped" });
+    }
+});
+
+// Auto-Start Check (For Flow: Popup -> Open Tab -> Auto Start)
+chrome.storage.local.get(['startOnLoad', 'targetUsername'], (result) => {
+    if (result.startOnLoad && result.targetUsername) {
+        log(`Auto-starting crawl for ${result.targetUsername}...`);
+
+        // Reset flag immediately to prevent loop
+        chrome.storage.local.set({ startOnLoad: false });
+
+        // Wait a bit for page load then run
+        setTimeout(() => {
+            if (window.IG_API) {
+                window.IG_API.runCrawler(result.targetUsername);
+            }
+        }, 3000);
     }
 });
 
