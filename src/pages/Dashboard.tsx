@@ -14,13 +14,13 @@ interface ScanProgress {
 }
 
 const StatCard = ({ icon, count, label, colorClass, iconBg }: { icon: string, count: string | number, label: string, colorClass: string, iconBg: string }) => (
-  <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/10 flex flex-col gap-3">
+  <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/10 flex flex-col gap-3 h-full">
     <div className={`size-10 rounded-lg ${iconBg} flex items-center justify-center ${colorClass}`}>
       <span className="material-symbols-outlined">{icon}</span>
     </div>
     <div>
       <p className="text-2xl font-bold text-[#181114] dark:text-white">{count}</p>
-      <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 min-h-[40px] flex items-start">{label}</p>
     </div>
   </div>
 );
@@ -327,7 +327,7 @@ const Dashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <Link to="/stats?tab=mutual">
+          <Link to="/stats?tab=mutual" className="h-full">
             <StatCard 
                  icon="group" 
                  count={stats.mutualCount} 
@@ -336,7 +336,7 @@ const Dashboard = () => {
                  iconBg="bg-blue-50 dark:bg-blue-900/20" 
             />
           </Link>
-          <Link to="/stats?tab=lost">
+          <Link to="/stats?tab=lost" className="h-full">
             <StatCard 
                  icon="person_remove" 
                  count={stats.lostFollowersCount} 
@@ -345,7 +345,7 @@ const Dashboard = () => {
                  iconBg="bg-red-50 dark:bg-red-900/20" 
             />
           </Link>
-          <Link to="/stats?tab=new">
+          <Link to="/stats?tab=new" className="h-full">
             <StatCard 
                 icon="person_add" 
                 count={stats.newFollowersCount} 
@@ -354,7 +354,7 @@ const Dashboard = () => {
                 iconBg="bg-green-50 dark:bg-green-900/20" 
             />
           </Link>
-          <Link to="/stats?tab=notfollowing">
+          <Link to="/stats?tab=notfollowing" className="h-full">
             <StatCard 
                  icon="person_search" 
                  count={stats.notFollowingBackCount} 
