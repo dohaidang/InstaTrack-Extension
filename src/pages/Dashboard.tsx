@@ -178,7 +178,8 @@ const Dashboard = () => {
               <p className="text-xs font-medium opacity-90 uppercase tracking-wider">Followers</p>
             </div>
             <Avatar 
-              src={stats.avatarUrl || "https://picsum.photos/200"} 
+              src={stats.avatarUrl || ""} 
+              username={stats.username || targetUsername || 'user'}
               size="lg"
               className="border-4 border-transparent"
             />

@@ -149,7 +149,7 @@ const UserCard = ({ username, name, img, type }: { username: string, name: strin
     <div className="flex items-center gap-4 bg-white dark:bg-white/5 px-4 min-h-[72px] py-3 justify-between rounded-lg shadow-sm border border-gray-100 dark:border-white/5">
       <div className="flex items-center gap-4 cursor-pointer" onClick={handleAction}>
         <div className="relative">
-          <Avatar src={img || `https://ui-avatars.com/api/?name=${username}&background=random`} size="md" hasStory={type === 'Lost'} />
+          <Avatar src={img || ''} username={username} size="md" hasStory={type === 'Lost'} />
           {type === 'Lost' && (
              <div className="absolute -bottom-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white dark:border-background-dark flex items-center justify-center">
                 <span className="material-symbols-outlined text-white text-[12px] font-bold">person_remove</span>
