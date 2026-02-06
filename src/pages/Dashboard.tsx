@@ -324,7 +324,7 @@ const Dashboard = () => {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
-          <Link to="/stats">
+          <Link to="/stats?tab=mutual">
             <StatCard 
                  icon="group" 
                  count={stats.mutualCount} 
@@ -333,7 +333,7 @@ const Dashboard = () => {
                  iconBg="bg-blue-50 dark:bg-blue-900/20" 
             />
           </Link>
-          <Link to="/stats">
+          <Link to="/stats?tab=lost">
             <StatCard 
                  icon="person_remove" 
                  count={stats.lostFollowersCount} 
@@ -342,7 +342,7 @@ const Dashboard = () => {
                  iconBg="bg-red-50 dark:bg-red-900/20" 
             />
           </Link>
-          <Link to="/stats">
+          <Link to="/stats?tab=new">
             <StatCard 
                 icon="person_add" 
                 count={stats.newFollowersCount} 
@@ -351,7 +351,7 @@ const Dashboard = () => {
                 iconBg="bg-green-50 dark:bg-green-900/20" 
             />
           </Link>
-          <Link to="/stats">
+          <Link to="/stats?tab=notfollowing">
             <StatCard 
                  icon="person_search" 
                  count={stats.notFollowingBackCount} 

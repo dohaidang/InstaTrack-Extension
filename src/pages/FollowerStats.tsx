@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import { useFollowerData } from '../hooks/useFollowerData';
 
@@ -10,10 +10,25 @@ interface Follower {
   avatarUrl: string;
 }
 
+type TabType = 'Mutual' | 'Lost' | 'New' | 'Not Following Back';
+
 const FollowerStats = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { stats, loading } = useFollowerData();
-  const [activeTab, setActiveTab] = useState<'Mutual' | 'Lost' | 'New' | 'Not Following Back'>('Mutual');
+  
+  // Get initial tab from URL query param
+  const getInitialTab = (): TabType => {
+    const tabParam = searchParams.get('tab');
+    switch (tabParam) {
+      case 'lost': return 'Lost';
+      case 'new': return 'New';
+      case 'notfollowing': return 'Not Following Back';
+      default: return 'Mutual';
+    }
+  };
+  
+  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
 
   const tabs: Array<'Mutual' | 'Lost' | 'New' | 'Not Following Back'> = ['Mutual', 'Lost', 'New', 'Not Following Back'];
 
@@ -147,8 +162,8 @@ const UserCard = ({ username, name, img, type }: { username: string, name: strin
 
   return (
     <div className="flex items-center gap-4 bg-white dark:bg-white/5 px-4 min-h-[72px] py-3 justify-between rounded-lg shadow-sm border border-gray-100 dark:border-white/5">
-      <div className="flex items-center gap-4 cursor-pointer" onClick={handleAction}>
-        <div className="relative">
+      <div className="flex items-center gap-4 cursor-pointer flex-1 min-w-0 overflow-hidden" onClick={handleAction}>
+        <div className="relative shrink-0">
           <Avatar src={img || ''} username={username} size="md" hasStory={type === 'Lost'} />
           {type === 'Lost' && (
              <div className="absolute -bottom-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white dark:border-background-dark flex items-center justify-center">
@@ -156,9 +171,9 @@ const UserCard = ({ username, name, img, type }: { username: string, name: strin
              </div>
           )}
         </div>
-        <div className="flex flex-col justify-center">
-          <p className="text-[#181114] dark:text-white text-base font-bold leading-normal line-clamp-1">{username}</p>
-          <p className="text-[#896175] dark:text-white/60 text-sm font-normal leading-normal line-clamp-1">{name}</p>
+        <div className="flex flex-col justify-center min-w-0 flex-1">
+          <p className="text-[#181114] dark:text-white text-base font-bold leading-normal truncate">{username}</p>
+          <p className="text-[#896175] dark:text-white/60 text-sm font-normal leading-normal truncate">{name}</p>
         </div>
       </div>
       <div className="shrink-0">
