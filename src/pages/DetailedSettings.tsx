@@ -154,7 +154,7 @@ const DetailedSettings = () => {
         
         {/* Version Info */}
         <div className="text-center pt-4 pb-10">
-            <p className="text-[#896172] dark:text-gray-500 text-xs">FollowerTrack v2.4.1</p>
+            <p className="text-[#896172] dark:text-gray-500 text-xs">FollowerTrack v1.0.0</p>
             <p className="text-[#896172] dark:text-gray-600 text-[10px] mt-1">{t('madeWithLove')}</p>
         </div>
       </div>
