@@ -120,12 +120,24 @@ const Settings = () => {
             />
             <div>
               <p className="text-[#181114] dark:text-white text-2xl font-bold leading-tight tracking-tight">
-                @{stats.username || 'loading...'}
+                @{stats.username || 'Not Connected'}
               </p>
-              <div className="mt-2 inline-flex items-center px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
-                {loading ? 'Loading...' : 'Logged in'}
+              <div className={`mt-2 inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                loading 
+                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  : stats.username 
+                    ? 'bg-primary/10 text-primary' 
+                    : 'bg-red-50 dark:bg-red-900/20 text-red-500'
+              }`}>
+                {loading ? 'Loading...' : stats.username ? 'Logged in' : 'Not Logged in'}
               </div>
-              <p className="text-[#896175] dark:text-gray-400 text-sm font-normal mt-2">Connected via Extension</p>
+              <p className={`text-sm font-normal mt-2 ${
+                stats.username 
+                  ? 'text-[#896175] dark:text-gray-400' 
+                  : 'text-red-400 dark:text-red-500'
+              }`}>
+                {stats.username ? 'Connected via Extension' : 'Open Instagram to connect'}
+              </p>
             </div>
           </div>
         </div>
@@ -175,8 +187,8 @@ const Settings = () => {
           Log Out
         </button>
         <div className="flex flex-col items-center gap-1">
-          <p className="text-[#896175] dark:text-gray-500 text-xs font-medium">Version 2.4.1 (Stable Build)</p>
-          <p className="text-[#896175]/60 dark:text-gray-600 text-[10px] uppercase tracking-tighter">Powered by Tracking Engine v4</p>
+          <p className="text-[#896175] dark:text-gray-500 text-xs font-medium">Version 1.0.0</p>
+          <p className="text-[#896175]/60 dark:text-gray-600 text-[10px] uppercase tracking-tighter">Powered by DoHaiDang</p>
         </div>
       </div>
     </div>
