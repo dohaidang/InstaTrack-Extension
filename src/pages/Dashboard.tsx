@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import { useFollowerData } from '../hooks/useFollowerData';
+import { getUsernameHistory, addUsernameToHistory, clearUsernameHistory } from '../utils/usernameHistory';
 
 interface ScanProgress {
   phase: 'idle' | 'resolving' | 'followers' | 'following' | 'processing' | 'done' | 'error';
@@ -29,6 +30,10 @@ const Dashboard = () => {
     const [statusText, setStatusText] = useState("Ready to scan");
     const [targetUsername, setTargetUsername] = useState("");
     const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+    const [usernameHistory, setUsernameHistory] = useState<string[]>([]);
+    const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Listen for scan progress updates
     useEffect(() => {
@@ -57,6 +62,27 @@ const Dashboard = () => {
       return () => chrome.storage.onChanged.removeListener(listener);
     }, []);
 
+    // Load username history on mount
+    useEffect(() => {
+      getUsernameHistory().then(setUsernameHistory);
+    }, []);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (
+          dropdownRef.current && 
+          !dropdownRef.current.contains(event.target as Node) &&
+          inputRef.current &&
+          !inputRef.current.contains(event.target as Node)
+        ) {
+          setShowHistoryDropdown(false);
+        }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const updateUIFromProgress = (progress: ScanProgress) => {
       if (!progress) return;
       
@@ -83,6 +109,10 @@ const Dashboard = () => {
             setStatusText("Launching...");
             setIsScanning(true);
             setScanProgress({ phase: 'idle', current: 0, total: 0, message: 'Starting...', timestamp: Date.now() });
+
+            // Save username to history
+            const updatedHistory = await addUsernameToHistory(targetUsername);
+            setUsernameHistory(updatedHistory);
 
             // Set flags for content script to pick up
             await chrome.storage.local.set({ 
@@ -233,16 +263,53 @@ const Dashboard = () => {
             </div>
           </div>
           
-           {/* Input Field */}
-           <div className="mb-4">
+           {/* Input Field with History Dropdown */}
+           <div className="mb-4 relative">
              <input 
+                ref={inputRef}
                 type="text" 
                 placeholder="Enter Instagram Username (e.g., cristiano)"
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-insta-orange"
                 value={targetUsername}
                 onChange={(e) => setTargetUsername(e.target.value)}
+                onFocus={() => usernameHistory.length > 0 && setShowHistoryDropdown(true)}
                 disabled={isScanning}
              />
+             
+             {/* History Dropdown */}
+             {showHistoryDropdown && usernameHistory.length > 0 && (
+               <div 
+                 ref={dropdownRef}
+                 className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+               >
+                 <div className="flex justify-between items-center px-3 py-2 border-b border-gray-100 dark:border-white/5">
+                   <span className="text-xs text-gray-400 uppercase font-semibold">Recent</span>
+                   <button 
+                     onClick={async () => {
+                       await clearUsernameHistory();
+                       setUsernameHistory([]);
+                       setShowHistoryDropdown(false);
+                     }}
+                     className="text-xs text-red-500 hover:text-red-600 font-medium"
+                   >
+                     Clear
+                   </button>
+                 </div>
+                 {usernameHistory.map((username, index) => (
+                   <button
+                     key={index}
+                     onClick={() => {
+                       setTargetUsername(username);
+                       setShowHistoryDropdown(false);
+                     }}
+                     className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-white/5 text-gray-700 dark:text-gray-200 text-sm flex items-center gap-2"
+                   >
+                     <span className="material-symbols-outlined text-gray-400 text-[16px]">history</span>
+                     @{username}
+                   </button>
+                 ))}
+               </div>
+             )}
            </div>
 
           <button 
