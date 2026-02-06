@@ -1,12 +1,55 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../components/Avatar';
+import { useFollowerData } from '../hooks/useFollowerData';
+
+interface Follower {
+  id: string;
+  username: string;
+  fullName: string;
+  avatarUrl: string;
+}
 
 const FollowerStats = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('Lost');
+  const { stats, loading } = useFollowerData();
+  const [activeTab, setActiveTab] = useState<'Mutual' | 'Lost' | 'New' | 'Not Following Back'>('Mutual');
 
-  const tabs = ['Mutual', 'Lost', 'New', 'Not Following Back'];
+  const tabs: Array<'Mutual' | 'Lost' | 'New' | 'Not Following Back'> = ['Mutual', 'Lost', 'New', 'Not Following Back'];
+
+  // Get current list based on active tab
+  const getCurrentList = (): Follower[] => {
+    switch (activeTab) {
+      case 'Mutual':
+        return stats.mutualList || [];
+      case 'Lost':
+        return stats.lostFollowersList || [];
+      case 'New':
+        return stats.newFollowersList || [];
+      case 'Not Following Back':
+        return stats.notFollowingBackList || [];
+      default:
+        return [];
+    }
+  };
+
+  const currentList = getCurrentList();
+
+  // Get tab count for badge
+  const getTabCount = (tab: string): number => {
+    switch (tab) {
+      case 'Mutual':
+        return stats.mutualCount || 0;
+      case 'Lost':
+        return stats.lostFollowersCount || 0;
+      case 'New':
+        return stats.newFollowersCount || 0;
+      case 'Not Following Back':
+        return stats.notFollowingBackCount || 0;
+      default:
+        return 0;
+    }
+  };
 
   return (
     <div className="pb-20">
@@ -37,69 +80,76 @@ const FollowerStats = () => {
                   : 'border-b-transparent text-[#896175] dark:text-white/60'
                 }`}
               >
-                <p className="text-sm font-bold leading-normal tracking-[0.015em]">{tab}</p>
+                <p className="text-sm font-bold leading-normal tracking-[0.015em]">
+                  {tab} {getTabCount(tab) > 0 && <span className="ml-1 text-xs opacity-70">({getTabCount(tab)})</span>}
+                </p>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      <div className="px-4">
-        {/* Today Group */}
-        <h3 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] pb-2 pt-6">Today</h3>
-        <div className="flex flex-col gap-3">
-          <UserCard 
-            username="wanderlust_jade" 
-            name="Jade Thompson" 
-            img="https://picsum.photos/201" 
-            type="Lost" 
-          />
-          <UserCard 
-            username="pixel_architect" 
-            name="Marcus Lee" 
-            img="https://picsum.photos/202" 
-            type="Lost" 
-          />
-        </div>
+      <div className="px-4 pt-4">
+        {/* Loading State */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4"></div>
+            <p className="text-gray-500 dark:text-gray-400">Loading...</p>
+          </div>
+        )}
 
-        {/* Yesterday Group */}
-        <h3 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] pb-2 pt-6">Yesterday</h3>
-        <div className="flex flex-col gap-3">
-          <UserCard 
-            username="dev_logic_" 
-            name="Samuel Rickman" 
-            img="https://picsum.photos/203" 
-            type="Following" 
-          />
-        </div>
+        {/* Empty State */}
+        {!loading && currentList.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="size-16 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-3xl text-gray-400">
+                {activeTab === 'Lost' ? 'person_remove' : 
+                 activeTab === 'New' ? 'person_add' : 
+                 activeTab === 'Mutual' ? 'group' : 'person_search'}
+              </span>
+            </div>
+            <p className="text-gray-500 dark:text-gray-400 text-center">
+              {activeTab === 'Lost' && 'No lost followers yet'}
+              {activeTab === 'New' && 'No new followers yet'}
+              {activeTab === 'Mutual' && 'No mutual followers found'}
+              {activeTab === 'Not Following Back' && 'Everyone you follow follows you back!'}
+            </p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm mt-2 text-center">
+              Run a scan to see your follower stats
+            </p>
+          </div>
+        )}
 
-        {/* Date Group */}
-        <h3 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] pb-2 pt-6">Oct 24, 2023</h3>
-        <div className="flex flex-col gap-3">
-          <UserCard 
-            username="minimal_shots" 
-            name="Sarah Jenkins" 
-            img="https://picsum.photos/204" 
-            type="NotFollowing" 
-          />
-           <UserCard 
-            username="urban_vibe" 
-            name="Chris O'Connell" 
-            img="https://picsum.photos/205" 
-            type="Following" 
-          />
-        </div>
+        {/* User List */}
+        {!loading && currentList.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {currentList.map((user) => (
+              <UserCard 
+                key={user.id || user.username}
+                username={user.username} 
+                name={user.fullName || user.username} 
+                img={user.avatarUrl} 
+                type={activeTab === 'Lost' ? 'Lost' : activeTab === 'Not Following Back' ? 'NotFollowing' : 'Following'} 
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 const UserCard = ({ username, name, img, type }: { username: string, name: string, img: string, type: 'Lost' | 'Following' | 'NotFollowing' }) => {
+  const handleAction = () => {
+    // Open Instagram profile in new tab
+    window.open(`https://www.instagram.com/${username}/`, '_blank');
+  };
+
   return (
     <div className="flex items-center gap-4 bg-white dark:bg-white/5 px-4 min-h-[72px] py-3 justify-between rounded-lg shadow-sm border border-gray-100 dark:border-white/5">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 cursor-pointer" onClick={handleAction}>
         <div className="relative">
-          <Avatar src={img} size="md" hasStory={type === 'Lost'} />
+          <Avatar src={img || `https://ui-avatars.com/api/?name=${username}&background=random`} size="md" hasStory={type === 'Lost'} />
           {type === 'Lost' && (
              <div className="absolute -bottom-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white dark:border-background-dark flex items-center justify-center">
                 <span className="material-symbols-outlined text-white text-[12px] font-bold">person_remove</span>
@@ -112,15 +162,16 @@ const UserCard = ({ username, name, img, type }: { username: string, name: strin
         </div>
       </div>
       <div className="shrink-0">
-        {type === 'Following' ? (
-          <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-9 px-4 bg-[#f4f0f2] dark:bg-white/10 text-[#181114] dark:text-white text-sm font-medium leading-normal w-fit">
-            <span className="truncate">Unfollow</span>
-          </button>
-        ) : (
-          <button className="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-9 px-4 bg-primary text-white text-sm font-semibold leading-normal w-fit shadow-md shadow-primary/20">
-            <span className="truncate">Follow</span>
-          </button>
-        )}
+        <button 
+          onClick={handleAction}
+          className={`flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-9 px-4 ${
+            type === 'Following' 
+              ? 'bg-[#f4f0f2] dark:bg-white/10 text-[#181114] dark:text-white' 
+              : 'bg-primary text-white shadow-md shadow-primary/20'
+          } text-sm font-medium leading-normal w-fit`}
+        >
+          <span className="truncate">View</span>
+        </button>
       </div>
     </div>
   );
