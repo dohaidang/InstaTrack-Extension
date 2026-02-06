@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import { useFollowerData } from '../hooks/useFollowerData';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface ToggleProps {
   checked: boolean;
@@ -67,6 +68,7 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 const Settings = () => {
   const navigate = useNavigate();
   const { stats, loading } = useFollowerData();
+  const { t, language } = useLanguage();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
 
@@ -102,7 +104,7 @@ const Settings = () => {
         <div onClick={() => navigate(-1)} className="text-[#181114] dark:text-white flex size-12 shrink-0 items-center justify-start cursor-pointer">
           <span className="material-symbols-outlined">arrow_back_ios</span>
         </div>
-        <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Settings</h2>
+        <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">{t('settings')}</h2>
         <div className="size-12 flex items-center justify-end">
           <span className="material-symbols-outlined cursor-pointer text-[#181114] dark:text-white">more_horiz</span>
         </div>
@@ -144,27 +146,27 @@ const Settings = () => {
       </div>
 
       <div className="px-4">
-        <h3 className="text-[#896175] dark:text-gray-400 text-[13px] font-semibold uppercase tracking-wider px-1 pb-2">App Settings</h3>
+        <h3 className="text-[#896175] dark:text-gray-400 text-[13px] font-semibold uppercase tracking-wider px-1 pb-2">{t('appSettings')}</h3>
         <div className="bg-white dark:bg-white/5 border border-[#e6dbe0] dark:border-white/10 rounded-lg overflow-hidden shadow-sm">
           <SettingsItem 
             icon="language" 
             color="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400" 
-            label="Language" 
-            value="English"
+            label={t('language')}
+            value={language === 'en' ? 'English' : 'Tiếng Việt'}
             hasChevron
             to="/settings/detailed"
           />
           <SettingsItem 
             icon="qr_code_scanner" 
             color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" 
-            label="Scanning"
+            label={t('scanning')}
             hasChevron
             to="/settings/detailed"
           />
           <SettingsItem 
             icon="notifications" 
             color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" 
-            label="Notifications"
+            label={t('notifications')}
             hasToggle
             toggleChecked={notifications}
             onToggleChange={handleNotificationsToggle}
@@ -172,7 +174,7 @@ const Settings = () => {
           <SettingsItem 
             icon="dark_mode" 
             color="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400" 
-            label="Dark Mode"
+            label={t('darkMode')}
             hasToggle
             toggleChecked={isDarkMode}
             onToggleChange={handleDarkModeToggle}
@@ -184,11 +186,11 @@ const Settings = () => {
       <div className="px-4 mt-8 flex flex-col items-center gap-4">
         <button className="w-full bg-red-50 dark:bg-red-500/10 text-red-500 font-bold py-4 rounded-lg flex items-center justify-center gap-2 active:bg-red-100 dark:active:bg-red-500/20 transition-colors">
           <span className="material-symbols-outlined text-xl">logout</span>
-          Log Out
+          {t('logOut')}
         </button>
         <div className="flex flex-col items-center gap-1">
-          <p className="text-[#896175] dark:text-gray-500 text-xs font-medium">Version 1.0.0</p>
-          <p className="text-[#896175]/60 dark:text-gray-600 text-[10px] uppercase tracking-tighter">Powered by DoHaiDang</p>
+          <p className="text-[#896175] dark:text-gray-500 text-xs font-medium">{t('version')} 2.4.1</p>
+          <p className="text-[#896175]/60 dark:text-gray-600 text-[10px] uppercase tracking-tighter">{t('poweredBy')}</p>
         </div>
       </div>
     </div>
