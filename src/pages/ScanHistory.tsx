@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../hooks/useLanguage';
 
 interface SnapshotEntry {
   date: string;
@@ -11,6 +12,7 @@ interface SnapshotEntry {
 
 const ScanHistory = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [history, setHistory] = useState<SnapshotEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -93,7 +95,7 @@ const ScanHistory = () => {
           <div onClick={() => navigate(-1)} className="text-[#181114] dark:text-white flex size-12 shrink-0 items-center justify-start cursor-pointer hover:opacity-70">
             <span className="material-symbols-outlined">arrow_back_ios</span>
           </div>
-          <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">Scan History</h2>
+          <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">{t('scanHistory')}</h2>
           <div className="flex w-12 items-center justify-end">
             {history.length > 0 && (
               <button 
@@ -122,7 +124,7 @@ const ScanHistory = () => {
             <div className="size-16 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-3xl text-gray-400">history</span>
             </div>
-            <p className="text-gray-500 dark:text-gray-400 text-center">No scan history yet</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center">{t('noHistory')}</p>
             <p className="text-gray-400 dark:text-gray-500 text-sm mt-2 text-center">
               Run your first scan to see history here
             </p>
@@ -151,7 +153,7 @@ const ScanHistory = () => {
         {!loading && history.length > 0 && (
           <div className="mt-6 p-4 bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/10">
             <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
-              Total {history.length} scan{history.length > 1 ? 's' : ''} recorded
+              Total {history.length} {t('scanned')}
             </p>
           </div>
         )}
@@ -177,6 +179,7 @@ const HistoryCard = ({
   lostCount: number;
   isLatest: boolean;
 }) => {
+  const { t } = useLanguage();
   return (
     <div className={`bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border ${isLatest ? 'border-primary/30 dark:border-primary/30' : 'border-gray-100 dark:border-white/5'}`}>
       <div className="flex items-center justify-between mb-3">
@@ -195,19 +198,19 @@ const HistoryCard = ({
       <div className="grid grid-cols-4 gap-2">
         <div className="text-center p-2 bg-gray-50 dark:bg-white/5 rounded-lg">
           <p className="text-sm font-bold text-[#181114] dark:text-white">{followerCount}</p>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">Followers</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('followers')}</p>
         </div>
         <div className="text-center p-2 bg-gray-50 dark:bg-white/5 rounded-lg">
           <p className="text-sm font-bold text-[#181114] dark:text-white">{followingCount}</p>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400">Following</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">{t('following')}</p>
         </div>
         <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
           <p className="text-sm font-bold text-green-600 dark:text-green-400">+{newCount}</p>
-          <p className="text-[10px] text-green-600/70 dark:text-green-400/70">New</p>
+          <p className="text-[10px] text-green-600/70 dark:text-green-400/70">{t('new')}</p>
         </div>
         <div className="text-center p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
           <p className="text-sm font-bold text-red-500 dark:text-red-400">-{lostCount}</p>
-          <p className="text-[10px] text-red-500/70 dark:text-red-400/70">Lost</p>
+          <p className="text-[10px] text-red-500/70 dark:text-red-400/70">{t('lost')}</p>
         </div>
       </div>
     </div>
