@@ -13,6 +13,25 @@
     const PROFILE_DOC_ID = '7950326061742202';
 
     /**
+     * Progress Tracker - Updates chrome.storage for popup to read
+     */
+    async function updateProgress(phase, current, total, message) {
+        try {
+            await chrome.storage.local.set({
+                scanProgress: {
+                    phase,
+                    current,
+                    total,
+                    message,
+                    timestamp: Date.now()
+                }
+            });
+        } catch (e) {
+            // Silent fail - don't interrupt scan for progress updates
+        }
+    }
+
+    /**
      * Helpers for headers
      */
     function getCommonHeaders() {
@@ -211,7 +230,7 @@
     /**
      * List Fetcher Loop
      */
-    async function fetchList(userId, type = 'followers') {
+    async function fetchList(userId, type = 'followers', expectedTotal = 0) {
         let allUsers = [];
         let hasNext = true;
         let endCursor = null;
@@ -222,6 +241,15 @@
         while (hasNext) {
             pageCount++;
             log(`Fetching ${type} page ${pageCount}... (Total: ${allUsers.length})`);
+
+            // Update progress
+            await updateProgress(
+                type,
+                allUsers.length,
+                expectedTotal || allUsers.length + 50,
+                `Fetching ${type}: ${allUsers.length}${expectedTotal ? '/' + expectedTotal : ''}`
+            );
+
             await randomDelay(1000, 2000);
 
             try {
@@ -241,11 +269,17 @@
                 hasNext = edge.page_info.has_next_page;
                 endCursor = edge.page_info.end_cursor;
 
-                // Safety break
-                // if (allUsers.length > 5000) hasNext = false; 
+                // Update progress after each page
+                await updateProgress(
+                    type,
+                    allUsers.length,
+                    expectedTotal || (hasNext ? allUsers.length + 50 : allUsers.length),
+                    `Fetching ${type}: ${allUsers.length}${expectedTotal ? '/' + expectedTotal : ''}`
+                );
 
             } catch (e) {
                 error(`Loop error in ${type}`, e);
+                await updateProgress('error', allUsers.length, expectedTotal, `Error fetching ${type}`);
                 hasNext = false;
             }
         }
@@ -257,38 +291,59 @@
      */
     async function runCrawler(targetUsername) {
         let userId;
+
+        // Initialize progress
+        await updateProgress('resolving', 0, 0, 'Resolving user profile...');
         await delay(2000);
 
         // Resolve User
         let userProfile = null;
-        if (targetUsername) {
-            userProfile = await fetchUserProfile(targetUsername);
-        } else {
-            const cookieId = getCookie('ds_user_id');
-            if (cookieId) {
-                userId = cookieId;
-                userProfile = { id: userId, username: "Me", fullName: "You", avatarUrl: null, followingCount: 0, followerCount: 0 };
+        try {
+            if (targetUsername) {
+                userProfile = await fetchUserProfile(targetUsername);
+            } else {
+                const cookieId = getCookie('ds_user_id');
+                if (cookieId) {
+                    userId = cookieId;
+                    userProfile = { id: userId, username: "Me", fullName: "You", avatarUrl: null, followingCount: 0, followerCount: 0 };
+                }
             }
+        } catch (e) {
+            await updateProgress('error', 0, 0, e.message || 'Failed to resolve user');
+            throw e;
         }
-        if (!userProfile || !userProfile.id) throw new Error("Could not detect User. Please login.");
+
+        if (!userProfile || !userProfile.id) {
+            await updateProgress('error', 0, 0, 'Could not detect User. Please login.');
+            throw new Error("Could not detect User. Please login.");
+        }
 
         userId = userProfile.id;
         log(`Starting Crawl for ${userProfile.username} (${userId})`);
+        await updateProgress('resolving', 1, 1, `Found: @${userProfile.username}`);
 
         // Save Profile First
         await chrome.storage.local.set({ ownerProfile: userProfile });
 
-        // Fetch Both Lists
+        // Fetch Followers
         log("Step 1: Fetching Followers...");
-        const followers = await fetchList(userId, 'followers');
+        await updateProgress('followers', 0, userProfile.followerCount, 'Starting followers fetch...');
+        const followers = await fetchList(userId, 'followers', userProfile.followerCount);
 
+        // Fetch Following
         log("Step 2: Fetching Following...");
-        const following = await fetchList(userId, 'following');
+        await updateProgress('following', 0, userProfile.followingCount, 'Starting following fetch...');
+        const following = await fetchList(userId, 'following', userProfile.followingCount);
 
         log(`Crawl Complete. Followers: ${followers.length}, Following: ${following.length}`);
 
-        // Save & Compute Diff
+        // Processing
+        await updateProgress('processing', 0, 1, 'Processing data...');
         await processAndSaveData(followers, following);
+
+        // Done
+        await updateProgress('done', followers.length + following.length, followers.length + following.length,
+            `Done! ${followers.length} followers, ${following.length} following`);
 
         return { followers, following };
     }

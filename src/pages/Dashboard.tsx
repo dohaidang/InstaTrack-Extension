@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../components/Avatar';
 import { useFollowerData } from '../hooks/useFollowerData';
+
+interface ScanProgress {
+  phase: 'idle' | 'resolving' | 'followers' | 'following' | 'processing' | 'done' | 'error';
+  current: number;
+  total: number;
+  message: string;
+  timestamp: number;
+}
 
 const StatCard = ({ icon, count, label, colorClass, iconBg }: { icon: string, count: string | number, label: string, colorClass: string, iconBg: string }) => (
   <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/10 flex flex-col gap-3">
@@ -20,6 +28,50 @@ const Dashboard = () => {
     const [isScanning, setIsScanning] = useState(false);
     const [statusText, setStatusText] = useState("Ready to scan");
     const [targetUsername, setTargetUsername] = useState("");
+    const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+
+    // Listen for scan progress updates
+    useEffect(() => {
+      const loadInitialProgress = async () => {
+        const result = await chrome.storage.local.get(['scanProgress']);
+        if (result.scanProgress) {
+          const progress = result.scanProgress as ScanProgress;
+          // Only show if recent (within last 5 minutes)
+          if (Date.now() - progress.timestamp < 5 * 60 * 1000) {
+            setScanProgress(progress);
+            updateUIFromProgress(progress);
+          }
+        }
+      };
+      loadInitialProgress();
+
+      const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+        if (areaName === 'local' && changes.scanProgress) {
+          const progress = changes.scanProgress.newValue as ScanProgress;
+          setScanProgress(progress);
+          updateUIFromProgress(progress);
+        }
+      };
+
+      chrome.storage.onChanged.addListener(listener);
+      return () => chrome.storage.onChanged.removeListener(listener);
+    }, []);
+
+    const updateUIFromProgress = (progress: ScanProgress) => {
+      if (!progress) return;
+      
+      setStatusText(progress.message);
+      
+      if (progress.phase === 'done') {
+        setIsScanning(false);
+        setStatusText(`✅ ${progress.message}`);
+      } else if (progress.phase === 'error') {
+        setIsScanning(false);
+        setStatusText(`❌ ${progress.message}`);
+      } else if (progress.phase !== 'idle') {
+        setIsScanning(true);
+      }
+    };
 
     const handleStartCrawl = async () => {
         if (!targetUsername) {
@@ -30,11 +82,13 @@ const Dashboard = () => {
         try {
             setStatusText("Launching...");
             setIsScanning(true);
+            setScanProgress({ phase: 'idle', current: 0, total: 0, message: 'Starting...', timestamp: Date.now() });
 
             // Set flags for content script to pick up
             await chrome.storage.local.set({ 
                 targetUsername: targetUsername, 
-                startOnLoad: true 
+                startOnLoad: true,
+                scanProgress: { phase: 'idle', current: 0, total: 0, message: 'Launching...', timestamp: Date.now() }
             });
 
             const url = `https://www.instagram.com/${targetUsername}/`;
@@ -56,6 +110,41 @@ const Dashboard = () => {
             setStatusText("Error launching");
             setIsScanning(false);
         }
+    };
+
+    // Calculate progress percentage
+    const getProgressPercent = (): number => {
+      if (!scanProgress || scanProgress.total === 0) {
+        return isScanning ? 10 : 100; // Show 10% when starting, 100% when idle
+      }
+      return Math.min(100, Math.round((scanProgress.current / scanProgress.total) * 100));
+    };
+
+    // Get progress display text
+    const getProgressDisplay = (): string => {
+      if (!scanProgress || !isScanning) return `${stats.totalFollowers}`;
+      
+      if (scanProgress.phase === 'followers') {
+        return `${scanProgress.current}`;
+      } else if (scanProgress.phase === 'following') {
+        return `${scanProgress.current}`;
+      }
+      return `${scanProgress.current}`;
+    };
+
+    // Get phase label
+    const getPhaseLabel = (): string => {
+      if (!scanProgress || !isScanning) return 'followers';
+      
+      switch (scanProgress.phase) {
+        case 'resolving': return 'resolving...';
+        case 'followers': return 'followers';
+        case 'following': return 'following';
+        case 'processing': return 'processing...';
+        case 'done': return 'complete!';
+        case 'error': return 'error';
+        default: return 'followers';
+      }
     };
 
   return (
@@ -115,9 +204,13 @@ const Dashboard = () => {
               </p>
             </div>
             <div className="flex gap-2">
-              <div className="bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full flex items-center gap-1.5 border border-gray-200 dark:border-white/10">
-                <span className="material-symbols-outlined text-[14px] text-gray-400">speed</span>
-                <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">Fast</span>
+              <div className={`px-3 py-1 rounded-full flex items-center gap-1.5 border ${isScanning ? 'bg-insta-orange/10 border-insta-orange/30' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>
+                <span className={`material-symbols-outlined text-[14px] ${isScanning ? 'text-insta-orange animate-spin' : 'text-gray-400'}`}>
+                  {isScanning ? 'sync' : 'speed'}
+                </span>
+                <span className={`text-[12px] font-semibold ${isScanning ? 'text-insta-orange' : 'text-gray-600 dark:text-gray-300'}`}>
+                  {isScanning ? 'Scanning' : 'Ready'}
+                </span>
               </div>
             </div>
           </div>
@@ -125,11 +218,17 @@ const Dashboard = () => {
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
               <p className="text-insta-orange text-sm font-bold">
-                {stats.totalFollowers} <span className="text-gray-400 font-normal">followers</span>
+                {getProgressDisplay()} <span className="text-gray-400 font-normal">{getPhaseLabel()}</span>
               </p>
+              {isScanning && scanProgress && scanProgress.total > 0 && (
+                <p className="text-xs text-gray-400">{getProgressPercent()}%</p>
+              )}
             </div>
             <div className="w-full bg-gray-100 dark:bg-white/5 rounded-full h-3 overflow-hidden">
-              <div className={`bg-gradient-to-r from-insta-yellow to-insta-orange h-full rounded-full transition-all ${isScanning ? 'animate-pulse' : ''}`} style={{ width: isScanning ? '100%' : '100%' }}></div>
+              <div 
+                className={`bg-gradient-to-r from-insta-yellow to-insta-orange h-full rounded-full transition-all duration-500 ${isScanning ? '' : ''}`} 
+                style={{ width: `${getProgressPercent()}%` }}
+              ></div>
             </div>
           </div>
           
@@ -141,15 +240,17 @@ const Dashboard = () => {
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-insta-orange"
                 value={targetUsername}
                 onChange={(e) => setTargetUsername(e.target.value)}
+                disabled={isScanning}
              />
            </div>
 
           <button 
             onClick={handleStartCrawl}
-            className={`w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors ${isScanning ? 'bg-insta-orange/10 hover:bg-insta-orange/20 text-insta-orange' : 'bg-primary text-white hover:bg-primary/90'}`}
+            disabled={isScanning}
+            className={`w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors ${isScanning ? 'bg-insta-orange/10 text-insta-orange cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
           >
-            <span className="material-symbols-outlined">{isScanning ? 'sync' : 'play_circle'}</span>
-            {isScanning ? 'Scanning Task Started...' : 'Auto Scan'}
+            <span className={`material-symbols-outlined ${isScanning ? 'animate-spin' : ''}`}>{isScanning ? 'sync' : 'play_circle'}</span>
+            {isScanning ? 'Scanning...' : 'Auto Scan'}
           </button>
         </div>
 
