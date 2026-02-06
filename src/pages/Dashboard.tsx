@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../components/Avatar';
+import { useFollowerData } from '../hooks/useFollowerData';
 
-const StatCard = ({ icon, count, label, colorClass, iconBg }: { icon: string, count: string, label: string, colorClass: string, iconBg: string }) => (
+interface ScanProgress {
+  phase: 'idle' | 'resolving' | 'followers' | 'following' | 'processing' | 'done' | 'error';
+  current: number;
+  total: number;
+  message: string;
+  timestamp: number;
+}
+
+const StatCard = ({ icon, count, label, colorClass, iconBg }: { icon: string, count: string | number, label: string, colorClass: string, iconBg: string }) => (
   <div className="bg-white dark:bg-white/5 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-white/10 flex flex-col gap-3">
     <div className={`size-10 rounded-lg ${iconBg} flex items-center justify-center ${colorClass}`}>
       <span className="material-symbols-outlined">{icon}</span>
@@ -15,6 +24,129 @@ const StatCard = ({ icon, count, label, colorClass, iconBg }: { icon: string, co
 );
 
 const Dashboard = () => {
+    const { stats, loading } = useFollowerData();
+    const [isScanning, setIsScanning] = useState(false);
+    const [statusText, setStatusText] = useState("Ready to scan");
+    const [targetUsername, setTargetUsername] = useState("");
+    const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+
+    // Listen for scan progress updates
+    useEffect(() => {
+      const loadInitialProgress = async () => {
+        const result = await chrome.storage.local.get(['scanProgress']);
+        if (result.scanProgress) {
+          const progress = result.scanProgress as ScanProgress;
+          // Only show if recent (within last 5 minutes)
+          if (Date.now() - progress.timestamp < 5 * 60 * 1000) {
+            setScanProgress(progress);
+            updateUIFromProgress(progress);
+          }
+        }
+      };
+      loadInitialProgress();
+
+      const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
+        if (areaName === 'local' && changes.scanProgress) {
+          const progress = changes.scanProgress.newValue as ScanProgress;
+          setScanProgress(progress);
+          updateUIFromProgress(progress);
+        }
+      };
+
+      chrome.storage.onChanged.addListener(listener);
+      return () => chrome.storage.onChanged.removeListener(listener);
+    }, []);
+
+    const updateUIFromProgress = (progress: ScanProgress) => {
+      if (!progress) return;
+      
+      setStatusText(progress.message);
+      
+      if (progress.phase === 'done') {
+        setIsScanning(false);
+        setStatusText(`✅ ${progress.message}`);
+      } else if (progress.phase === 'error') {
+        setIsScanning(false);
+        setStatusText(`❌ ${progress.message}`);
+      } else if (progress.phase !== 'idle') {
+        setIsScanning(true);
+      }
+    };
+
+    const handleStartCrawl = async () => {
+        if (!targetUsername) {
+            setStatusText("Enter username first");
+            return;
+        }
+
+        try {
+            setStatusText("Launching...");
+            setIsScanning(true);
+            setScanProgress({ phase: 'idle', current: 0, total: 0, message: 'Starting...', timestamp: Date.now() });
+
+            // Set flags for content script to pick up
+            await chrome.storage.local.set({ 
+                targetUsername: targetUsername, 
+                startOnLoad: true,
+                scanProgress: { phase: 'idle', current: 0, total: 0, message: 'Launching...', timestamp: Date.now() }
+            });
+
+            const url = `https://www.instagram.com/${targetUsername}/`;
+
+            // Check if we have an active tab
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            
+            if (tab && tab.url && tab.url.includes("instagram.com")) {
+                 // Navigate current tab
+                 await chrome.tabs.update(tab.id!, { url: url });
+            } else {
+                 // Open new tab
+                 await chrome.tabs.create({ url: url });
+            }
+            
+            setStatusText("Waiting for page load...");
+        } catch (error) {
+            console.error("Launch Failed:", error);
+            setStatusText("Error launching");
+            setIsScanning(false);
+        }
+    };
+
+    // Calculate progress percentage
+    const getProgressPercent = (): number => {
+      if (!scanProgress || scanProgress.total === 0) {
+        return isScanning ? 10 : 100; // Show 10% when starting, 100% when idle
+      }
+      return Math.min(100, Math.round((scanProgress.current / scanProgress.total) * 100));
+    };
+
+    // Get progress display text
+    const getProgressDisplay = (): string => {
+      if (!scanProgress || !isScanning) return `${stats.totalFollowers}`;
+      
+      if (scanProgress.phase === 'followers') {
+        return `${scanProgress.current}`;
+      } else if (scanProgress.phase === 'following') {
+        return `${scanProgress.current}`;
+      }
+      return `${scanProgress.current}`;
+    };
+
+    // Get phase label
+    const getPhaseLabel = (): string => {
+      if (!scanProgress || !isScanning) return 'followers';
+      
+      switch (scanProgress.phase) {
+        case 'resolving': return 'resolving...';
+        case 'followers': return 'followers';
+        case 'following': return 'following';
+        case 'processing': return 'processing...';
+        case 'done': return 'complete!';
+        case 'error': return 'error';
+        default: return 'followers';
+      }
+    };
+
   return (
     <>
       {/* Header Section with Instagram Gradient */}
@@ -26,7 +158,9 @@ const Dashboard = () => {
           <div className="text-white flex size-10 shrink-0 items-center justify-center rounded-full bg-white/20 backdrop-blur-md cursor-pointer">
             <span className="material-symbols-outlined">arrow_back_ios_new</span>
           </div>
-          <h2 className="text-white text-lg font-bold leading-tight tracking-tight flex-1 text-center">@the_creative_coder</h2>
+          <h2 className="text-white text-lg font-bold leading-tight tracking-tight flex-1 text-center">
+            @{stats.username || targetUsername || 'user'}
+          </h2>
           <div className="flex w-10 items-center justify-end">
             <button className="flex items-center justify-center rounded-full size-10 bg-white/20 backdrop-blur-md text-white">
               <span className="material-symbols-outlined">more_horiz</span>
@@ -38,16 +172,21 @@ const Dashboard = () => {
         <div className="flex flex-col items-center gap-4 relative z-10">
           <div className="flex items-center justify-center gap-8 w-full">
             <div className="flex flex-col items-center text-white">
-              <p className="text-xl font-bold">1,190</p>
+              <p className="text-xl font-bold">
+                 {loading ? '...' : stats.totalFollowers}
+              </p>
               <p className="text-xs font-medium opacity-90 uppercase tracking-wider">Followers</p>
             </div>
             <Avatar 
-              src="https://picsum.photos/200" 
+              src={stats.avatarUrl || ""} 
+              username={stats.username || targetUsername || 'user'}
               size="lg"
-              className="border-4 border-transparent" // Adjust if needed
+              className="border-4 border-transparent"
             />
             <div className="flex flex-col items-center text-white">
-              <p className="text-xl font-bold">850</p>
+              <p className="text-xl font-bold">
+                 {stats.followingCount !== null ? stats.followingCount : '--'}
+              </p>
               <p className="text-xs font-medium opacity-90 uppercase tracking-wider">Following</p>
             </div>
           </div>
@@ -60,46 +199,99 @@ const Dashboard = () => {
         <div className="bg-white dark:bg-white/5 rounded-xl shadow-lg border border-gray-100 dark:border-white/10 p-5 mb-6">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h3 className="text-[#181114] dark:text-white text-base font-bold leading-tight">Fetching followers...</h3>
-              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">@the_creative_coder</p>
+              <h3 className="text-[#181114] dark:text-white text-base font-bold leading-tight">{statusText}</h3>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+                 {stats.lastUpdated ? `Last updated: ${stats.lastUpdated}` : 'No data yet'}
+              </p>
             </div>
             <div className="flex gap-2">
-              <div className="bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full flex items-center gap-1.5 border border-gray-200 dark:border-white/10">
-                <span className="material-symbols-outlined text-[14px] text-gray-400">speed</span>
-                <span className="text-[12px] font-semibold text-gray-600 dark:text-gray-300">1s/req</span>
+              <div className={`px-3 py-1 rounded-full flex items-center gap-1.5 border ${isScanning ? 'bg-insta-orange/10 border-insta-orange/30' : 'bg-gray-100 dark:bg-white/5 border-gray-200 dark:border-white/10'}`}>
+                <span className={`material-symbols-outlined text-[14px] ${isScanning ? 'text-insta-orange animate-spin' : 'text-gray-400'}`}>
+                  {isScanning ? 'sync' : 'speed'}
+                </span>
+                <span className={`text-[12px] font-semibold ${isScanning ? 'text-insta-orange' : 'text-gray-600 dark:text-gray-300'}`}>
+                  {isScanning ? 'Scanning' : 'Ready'}
+                </span>
               </div>
             </div>
           </div>
           
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
-              <p className="text-insta-orange text-sm font-bold">646 <span className="text-gray-400 font-normal">/ 1,190</span></p>
-              <p className="text-insta-orange text-sm font-bold">54%</p>
+              <p className="text-insta-orange text-sm font-bold">
+                {getProgressDisplay()} <span className="text-gray-400 font-normal">{getPhaseLabel()}</span>
+              </p>
+              {isScanning && scanProgress && scanProgress.total > 0 && (
+                <p className="text-xs text-gray-400">{getProgressPercent()}%</p>
+              )}
             </div>
             <div className="w-full bg-gray-100 dark:bg-white/5 rounded-full h-3 overflow-hidden">
-              <div className="bg-gradient-to-r from-insta-yellow to-insta-orange h-full rounded-full transition-all" style={{ width: '54%' }}></div>
+              <div 
+                className={`bg-gradient-to-r from-insta-yellow to-insta-orange h-full rounded-full transition-all duration-500 ${isScanning ? '' : ''}`} 
+                style={{ width: `${getProgressPercent()}%` }}
+              ></div>
             </div>
           </div>
           
-          <button className="w-full py-3 bg-insta-orange/10 hover:bg-insta-orange/20 text-insta-orange rounded-lg font-bold flex items-center justify-center gap-2 transition-colors">
-            <span className="material-symbols-outlined">pause_circle</span>
-            Pause Fetching
+           {/* Input Field */}
+           <div className="mb-4">
+             <input 
+                type="text" 
+                placeholder="Enter Instagram Username (e.g., cristiano)"
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-insta-orange"
+                value={targetUsername}
+                onChange={(e) => setTargetUsername(e.target.value)}
+                disabled={isScanning}
+             />
+           </div>
+
+          <button 
+            onClick={handleStartCrawl}
+            disabled={isScanning}
+            className={`w-full py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors ${isScanning ? 'bg-insta-orange/10 text-insta-orange cursor-not-allowed' : 'bg-primary text-white hover:bg-primary/90'}`}
+          >
+            <span className={`material-symbols-outlined ${isScanning ? 'animate-spin' : ''}`}>{isScanning ? 'sync' : 'play_circle'}</span>
+            {isScanning ? 'Scanning...' : 'Auto Scan'}
           </button>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4">
           <Link to="/stats">
-            <StatCard icon="group" count="432" label="Mutual friends" colorClass="text-blue-500" iconBg="bg-blue-50 dark:bg-blue-900/20" />
+            <StatCard 
+                 icon="group" 
+                 count={stats.mutualCount} 
+                 label="Mutual friends" 
+                 colorClass="text-blue-500" 
+                 iconBg="bg-blue-50 dark:bg-blue-900/20" 
+            />
           </Link>
           <Link to="/stats">
-            <StatCard icon="person_remove" count="12" label="Lost followers" colorClass="text-red-500" iconBg="bg-red-50 dark:bg-red-900/20" />
+            <StatCard 
+                 icon="person_remove" 
+                 count={stats.lostFollowersCount} 
+                 label="Lost followers" 
+                 colorClass="text-red-500" 
+                 iconBg="bg-red-50 dark:bg-red-900/20" 
+            />
           </Link>
           <Link to="/stats">
-            <StatCard icon="person_add" count="84" label="New followers" colorClass="text-green-500" iconBg="bg-green-50 dark:bg-green-900/20" />
+            <StatCard 
+                icon="person_add" 
+                count={stats.newFollowersCount} 
+                label="New followers" 
+                colorClass="text-green-500" 
+                iconBg="bg-green-50 dark:bg-green-900/20" 
+            />
           </Link>
           <Link to="/stats">
-            <StatCard icon="person_search" count="215" label="Not following back" colorClass="text-orange-500" iconBg="bg-orange-50 dark:bg-orange-900/20" />
+            <StatCard 
+                 icon="person_search" 
+                 count={stats.notFollowingBackCount} 
+                 label="Not following back" 
+                 colorClass="text-orange-500" 
+                 iconBg="bg-orange-50 dark:bg-orange-900/20" 
+            />
           </Link>
         </div>
 

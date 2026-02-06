@@ -38,13 +38,11 @@ const BottomNav = () => {
 
 const Layout = ({ children }: React.PropsWithChildren) => {
   return (
-    <div className="bg-gray-100 min-h-screen flex justify-center">
-      <div className="relative flex h-full min-h-screen w-full max-w-[480px] flex-col bg-background-light dark:bg-background-dark shadow-2xl overflow-x-hidden">
-        <main className="flex-1 flex flex-col">
-          {children}
-        </main>
-        <BottomNav />
-      </div>
+    <div className="w-[360px] h-[600px] bg-background-light dark:bg-background-dark flex flex-col overflow-hidden">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        {children}
+      </main>
+      <BottomNav />
     </div>
   );
 };
