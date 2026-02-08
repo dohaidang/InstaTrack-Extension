@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFollowerData } from '../hooks/useFollowerData';
 import Avatar from '../components/Avatar';
 import { useLanguage } from '../hooks/useLanguage';
+import { exportToCsv } from '../utils/exportCsv';
 
 interface Follower {
   id: string;
@@ -80,6 +81,13 @@ const FollowerStats = () => {
     }
   };
 
+  // Export CSV handler
+  const handleExport = () => {
+    if (filteredList.length === 0) return;
+    const filename = `instagram_${activeTab.toLowerCase().replace(/ /g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+    exportToCsv(filteredList, filename, activeTab);
+  };
+
   return (
     <div className="pb-24 pt-4 min-h-screen bg-white dark:bg-background-dark">
       {/* Top Navigation Bar */}
@@ -88,7 +96,15 @@ const FollowerStats = () => {
           <div onClick={() => navigate(-1)} className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
             <span className="material-symbols-outlined text-2xl text-[#181114] dark:text-white">arrow_back_ios_new</span>
           </div>
-          <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-10">{t('followerStats')}</h2>
+          <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">{t('followerStats')}</h2>
+          <button 
+            onClick={handleExport}
+            disabled={filteredList.length === 0}
+            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={t('exportCsv')}
+          >
+            <span className="material-symbols-outlined text-xl text-[#181114] dark:text-white">download</span>
+          </button>
         </div>
       </div>
 

@@ -55,6 +55,7 @@ export const translations = {
         clear: 'Clear',
         searchPlaceholder: 'Search username...',
         noResults: 'No results found',
+        exportCsv: 'Export CSV',
 
         // Stats
         followerStats: 'Follower Stats',
@@ -134,6 +135,7 @@ export const translations = {
         clear: 'Xóa',
         searchPlaceholder: 'Tìm kiếm username...',
         noResults: 'Không tìm thấy kết quả',
+        exportCsv: 'Xuất CSV',
 
         // Stats
         followerStats: 'Thống kê Follower',
