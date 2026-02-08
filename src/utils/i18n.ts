@@ -53,6 +53,8 @@ export const translations = {
         enterUsername: 'Enter Instagram Username (e.g., cristiano)',
         recent: 'Recent',
         clear: 'Clear',
+        searchPlaceholder: 'Search username...',
+        noResults: 'No results found',
 
         // Stats
         followerStats: 'Follower Stats',
@@ -130,6 +132,8 @@ export const translations = {
         enterUsername: 'Nhập Instagram Username (vd: cristiano)',
         recent: 'Gần đây',
         clear: 'Xóa',
+        searchPlaceholder: 'Tìm kiếm username...',
+        noResults: 'Không tìm thấy kết quả',
 
         // Stats
         followerStats: 'Thống kê Follower',
