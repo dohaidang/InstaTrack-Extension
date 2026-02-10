@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useFollowerData } from '../hooks/useFollowerData';
 import Avatar from '../components/Avatar';
 import { useLanguage } from '../hooks/useLanguage';
+import { exportToCsv } from '../utils/exportCsv';
 
 interface Follower {
   id: string;
@@ -31,6 +32,7 @@ const FollowerStats = () => {
   };
   
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Update active tab when URL changes
   useEffect(() => {
@@ -51,6 +53,12 @@ const FollowerStats = () => {
   };
 
   const currentList = getCurrentList();
+
+  // Filter list by search query
+  const filteredList = currentList.filter(user =>
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
+  );
 
   // Get tab count for badge
   const getTabCount = (tab: string): number => {
@@ -73,6 +81,13 @@ const FollowerStats = () => {
     }
   };
 
+  // Export CSV handler
+  const handleExport = () => {
+    if (filteredList.length === 0) return;
+    const filename = `instagram_${activeTab.toLowerCase().replace(/ /g, '_')}_${new Date().toISOString().slice(0, 10)}`;
+    exportToCsv(filteredList, filename, activeTab);
+  };
+
   return (
     <div className="pb-24 pt-4 min-h-screen bg-white dark:bg-background-dark">
       {/* Top Navigation Bar */}
@@ -81,7 +96,15 @@ const FollowerStats = () => {
           <div onClick={() => navigate(-1)} className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
             <span className="material-symbols-outlined text-2xl text-[#181114] dark:text-white">arrow_back_ios_new</span>
           </div>
-          <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-10">{t('followerStats')}</h2>
+          <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">{t('followerStats')}</h2>
+          <button 
+            onClick={handleExport}
+            disabled={filteredList.length === 0}
+            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={t('exportCsv')}
+          >
+            <span className="material-symbols-outlined text-xl text-[#181114] dark:text-white">download</span>
+          </button>
         </div>
       </div>
 
@@ -106,6 +129,26 @@ const FollowerStats = () => {
           ))}
         </div>
 
+        {/* Search Input */}
+        <div className="relative mb-4">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('searchPlaceholder')}
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+          )}
+        </div>
+
         {/* List */}
         {loading ? (
              <div className="flex flex-col items-center justify-center py-20">
@@ -114,7 +157,7 @@ const FollowerStats = () => {
              </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {currentList.map((user) => (
+            {filteredList.map((user) => (
               <UserCard 
                 key={user.id || user.username}
                 username={user.username} 
@@ -123,12 +166,12 @@ const FollowerStats = () => {
                 type={activeTab === 'Lost' ? 'Lost' : activeTab === 'Not Following Back' ? 'NotFollowing' : 'Following'} 
               />
             ))}
-            {currentList.length === 0 && (
+            {filteredList.length === 0 && (
                 <div className="text-center py-12">
                     <div className="bg-gray-50 dark:bg-white/5 size-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="material-symbols-outlined text-3xl text-gray-300">inbox</span>
+                        <span className="material-symbols-outlined text-3xl text-gray-300">{searchQuery ? 'search_off' : 'inbox'}</span>
                     </div>
-                    <p className="text-gray-500 dark:text-gray-400">{t('noDataYet')}</p>
+                    <p className="text-gray-500 dark:text-gray-400">{searchQuery ? t('noResults') : t('noDataYet')}</p>
                 </div>
             )}
           </div>
