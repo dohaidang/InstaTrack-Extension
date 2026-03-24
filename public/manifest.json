@@ -8,7 +8,9 @@
         "alarms"
     ],
     "host_permissions": [
-        "https://www.instagram.com/*"
+        "https://www.instagram.com/*",
+        "*://*.fbcdn.net/*",
+        "*://*.cdninstagram.com/*"
     ],
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'self'; img-src * data: blob: https://*.cdninstagram.com https://*.fbcdn.net;"

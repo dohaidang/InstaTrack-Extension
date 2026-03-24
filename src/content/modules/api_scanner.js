@@ -293,7 +293,7 @@
     async function fetchAvatarAsBase64(url) {
         if (!url) return null;
         try {
-            const response = await fetch(url, { method: 'GET', mode: 'cors' });
+            const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const blob = await response.blob();
             return await new Promise((resolve, reject) => {

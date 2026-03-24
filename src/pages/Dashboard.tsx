@@ -333,26 +333,7 @@ const Dashboard = () => {
               {stats.lastUpdated ? `Updated: ${stats.lastUpdated}` : t('noDataYet')}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-surface-container-lowest p-3 rounded-xl flex items-center gap-2.5">
-              <div className="bg-primary/10 p-1.5 rounded-full text-primary">
-                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-              </div>
-              <div>
-                <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-tight">Speed</p>
-                <p className="text-xs font-extrabold text-on-surface">Ultra</p>
-              </div>
-            </div>
-            <div className="bg-surface-container-lowest p-3 rounded-xl flex items-center gap-2.5">
-              <div className="bg-tertiary/10 p-1.5 rounded-full text-tertiary">
-                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
-              </div>
-              <div>
-                <p className="text-[9px] font-bold text-on-surface-variant uppercase tracking-tight">Quality</p>
-                <p className="text-xs font-extrabold text-on-surface">Lossless</p>
-              </div>
-            </div>
-          </div>
+
         </div>
 
         {/* ── Stats Grid ──────────────────────────────────────────────────── */}
