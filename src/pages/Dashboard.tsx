@@ -92,7 +92,7 @@ const Dashboard = () => {
       
       if (progress.phase === 'done') {
         setIsScanning(false);
-        setStatusText(`✅ ${progress.message}`);
+        setStatusText(progress.message);
       } else if (progress.phase === 'error') {
         setIsScanning(false);
         setStatusText(`❌ ${progress.message}`);
