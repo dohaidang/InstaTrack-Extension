@@ -169,18 +169,18 @@ const Dashboard = () => {
 
         {/* profile */}
         <div className="relative flex flex-col items-center text-center">
-          <div className="relative mb-3">
-            <div className="w-[72px] h-[72px] rounded-full p-[2px] bg-white/30 backdrop-blur-md">
+          <div className="relative mb-3 inline-block">
+            {/* ring auto-sizes around Avatar — no fixed px to prevent overflow */}
+            <div className="p-[3px] rounded-full bg-white/30 backdrop-blur-md">
               <Avatar
                 src={stats.avatarBase64 || stats.avatarUrl || ''}
                 username={stats.username || 'user'}
                 size="lg"
                 hasStory={false}
-                className="w-full h-full"
               />
             </div>
             {/* online dot */}
-            <div className="absolute bottom-0.5 right-0.5 bg-green-400 w-4 h-4 rounded-full border-2 border-[#b6004f]" />
+            <div className="absolute bottom-1 right-1 bg-green-400 w-4 h-4 rounded-full border-2 border-[#b6004f]" />
           </div>
 
           <h2 className="text-lg font-extrabold tracking-tight mb-0.5">
