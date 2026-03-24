@@ -398,6 +398,18 @@
         };
         diffs[dateKey] = diffResult;
 
+        // [FIX Layer 2] Prune old snapshots — keep only MAX_SNAPSHOTS most recent days
+        const MAX_SNAPSHOTS = 3;
+        const allDates = Object.keys(snapshots).sort(); // ascending: oldest first
+        if (allDates.length > MAX_SNAPSHOTS) {
+            const toDelete = allDates.slice(0, allDates.length - MAX_SNAPSHOTS);
+            toDelete.forEach(d => {
+                delete snapshots[d];
+                delete diffs[d];
+                log(`[Prune] Deleted old snapshot: ${d}`);
+            });
+        }
+
         await chrome.storage.local.set({
             snapshots: snapshots,
             diffs: diffs,
