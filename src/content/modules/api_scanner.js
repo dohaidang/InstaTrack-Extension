@@ -287,6 +287,28 @@
     }
 
     /**
+     * Fetch avatar image and convert to base64
+     * Must run in content script context (instagram.com) to bypass CDN CORS
+     */
+    async function fetchAvatarAsBase64(url) {
+        if (!url) return null;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result); // data:image/...;base64,...
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        } catch (e) {
+            error('[Avatar] Failed to fetch base64 avatar:', e);
+            return null;
+        }
+    }
+
+    /**
      * Main Entry
      */
     async function runCrawler(targetUsername) {
@@ -324,6 +346,14 @@
 
         // Save Profile First
         await chrome.storage.local.set({ ownerProfile: userProfile });
+
+        // Fetch avatar as base64 (content script context = no CORS block)
+        log('[Avatar] Fetching avatar as base64...');
+        const avatarBase64 = await fetchAvatarAsBase64(userProfile.avatarUrl);
+        if (avatarBase64) {
+            await chrome.storage.local.set({ ownerAvatarBase64: avatarBase64 });
+            log('[Avatar] Saved base64 avatar to storage.');
+        }
 
         // Fetch Followers
         log("Step 1: Fetching Followers...");
