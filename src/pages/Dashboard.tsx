@@ -210,7 +210,7 @@ const Dashboard = () => {
               <p className="text-xs font-medium opacity-90 uppercase tracking-wider">{t('followers')}</p>
             </div>
             <Avatar 
-              src={stats.avatarUrl || ''} 
+              src={stats.avatarBase64 || stats.avatarUrl || ''} 
               username={stats.username || 'user'}
               size="lg" 
               hasStory={true}

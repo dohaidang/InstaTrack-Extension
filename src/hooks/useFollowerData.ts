@@ -36,7 +36,8 @@ interface Stats {
     lastUpdated: string | null;
     username: string | null;
     avatarUrl: string | null;
-    followingCount: number | null; // From Profile Info
+    avatarBase64: string | null;
+    followingCount: number | null;
     followerCount: number | null;
 }
 
@@ -57,6 +58,7 @@ export const useFollowerData = () => {
         lastUpdated: null,
         username: null,
         avatarUrl: null,
+        avatarBase64: null,
         followingCount: null,
         followerCount: null
     });
@@ -65,7 +67,7 @@ export const useFollowerData = () => {
 
     const fetchStats = async () => {
         try {
-            const result = await chrome.storage.local.get(['snapshots', 'diffs', 'lastSnapshotDate', 'ownerProfile']);
+            const result = await chrome.storage.local.get(['snapshots', 'diffs', 'lastSnapshotDate', 'ownerProfile', 'ownerAvatarBase64']);
             const lastDate = result.lastSnapshotDate as string;
             const diffs = result.diffs || {};
             const snapshots = result.snapshots || {};
@@ -96,6 +98,7 @@ export const useFollowerData = () => {
                 lastUpdated: lastDate || null,
                 username: ownerProfile?.username || 'Me',
                 avatarUrl: ownerProfile?.avatarUrl || null,
+                avatarBase64: (result.ownerAvatarBase64 as string) || null,
                 followingCount: ownerProfile?.followingCount || 0,
                 followerCount: ownerProfile?.followerCount || 0
             });
@@ -110,7 +113,7 @@ export const useFollowerData = () => {
     useEffect(() => {
         fetchStats();
         const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-            if (areaName === 'local' && (changes.snapshots || changes.diffs || changes.lastSnapshotDate || changes.ownerProfile)) {
+            if (areaName === 'local' && (changes.snapshots || changes.diffs || changes.lastSnapshotDate || changes.ownerProfile || changes.ownerAvatarBase64)) {
                 fetchStats();
             }
         };
