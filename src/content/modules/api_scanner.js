@@ -389,19 +389,69 @@
             }
         };
 
+        // [FIX] Strip avatarUrl & fullName from snapshots - only needed for diff (id, username)
+        // avatarUrl is kept in diffs for UI display. This reduces snapshot size by ~60%.
+        const toSlim = (arr) => arr.map(({ id, username }) => ({ id, username }));
         snapshots[dateKey] = {
-            followers: currFollowers,
-            following: currFollowing
+            followers: toSlim(currFollowers),
+            following: toSlim(currFollowing)
         };
         diffs[dateKey] = diffResult;
 
-        await chrome.storage.local.set({
-            snapshots: snapshots,
-            diffs: diffs,
-            lastSnapshotDate: dateKey,
-            isScanning: false
-        });
-        log("Saved Snapshots & Diffs.", diffResult);
+        // [FIX Layer 2] Prune old snapshots — keep only MAX_SNAPSHOTS most recent days
+        const MAX_SNAPSHOTS = 3;
+        const allDates = Object.keys(snapshots).sort(); // ascending: oldest first
+        if (allDates.length > MAX_SNAPSHOTS) {
+            const toDelete = allDates.slice(0, allDates.length - MAX_SNAPSHOTS);
+            toDelete.forEach(d => {
+                delete snapshots[d];
+                delete diffs[d];
+                log(`[Prune] Deleted old snapshot: ${d}`);
+            });
+        }
+
+        // [FIX Layer 3] Graceful save with QuotaExceeded recovery
+        const saveToStorage = async () => {
+            await chrome.storage.local.set({
+                snapshots: snapshots,
+                diffs: diffs,
+                lastSnapshotDate: dateKey,
+                isScanning: false
+            });
+        };
+
+        try {
+            await saveToStorage();
+            log("Saved Snapshots & Diffs.", diffResult);
+        } catch (e) {
+            const isQuotaError = e.message?.includes('QUOTA_BYTES') || e.message?.includes('QuotaExceeded');
+            if (isQuotaError) {
+                // Emergency prune: xóa snapshot cũ nhất rồi retry
+                const remainingDates = Object.keys(snapshots).sort();
+                if (remainingDates.length > 1) {
+                    const oldest = remainingDates[0];
+                    delete snapshots[oldest];
+                    delete diffs[oldest];
+                    log(`[Emergency Prune] Removed oldest snapshot (${oldest}) to free space.`);
+                    try {
+                        await saveToStorage();
+                        log("Saved after emergency prune.", diffResult);
+                    } catch (retryErr) {
+                        error("Storage still full after emergency prune.", retryErr);
+                        await updateProgress('error', 0, 0,
+                            'Storage đầy! Vào Settings → Clear Data để giải phóng.');
+                        throw retryErr;
+                    }
+                } else {
+                    error("Storage full and no old snapshots to prune.", e);
+                    await updateProgress('error', 0, 0,
+                        'Storage đầy! Vào Settings → Clear Data để giải phóng.');
+                    throw e;
+                }
+            } else {
+                throw e;
+            }
+        }
     }
 
     window.IG_API = {

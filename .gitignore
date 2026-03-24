@@ -13,3 +13,5 @@ build/
 # env files
 .env
 .env.local
+
+.gitignore
