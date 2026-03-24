@@ -389,9 +389,12 @@
             }
         };
 
+        // [FIX] Strip avatarUrl & fullName from snapshots - only needed for diff (id, username)
+        // avatarUrl is kept in diffs for UI display. This reduces snapshot size by ~60%.
+        const toSlim = (arr) => arr.map(({ id, username }) => ({ id, username }));
         snapshots[dateKey] = {
-            followers: currFollowers,
-            following: currFollowing
+            followers: toSlim(currFollowers),
+            following: toSlim(currFollowing)
         };
         diffs[dateKey] = diffResult;
 
