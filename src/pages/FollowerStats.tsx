@@ -89,21 +89,24 @@ const FollowerStats = () => {
   };
 
   return (
-    <div className="pb-24 pt-4 min-h-screen bg-white dark:bg-background-dark">
+    <div className="pb-24 pt-4 min-h-screen bg-lux-bg text-lux-text-primary">
       {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-50 bg-white/80 dark:bg-background-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-white/10 -mt-4 mb-4">
+      <div className="sticky top-0 z-50 bg-lux-bg/80 backdrop-blur-md border-b border-lux-glass-border -mt-4 mb-4">
         <div className="flex items-center p-4 justify-between max-w-md mx-auto">
-          <div onClick={() => navigate(-1)} className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-            <span className="material-symbols-outlined text-2xl text-[#181114] dark:text-white">arrow_back_ios_new</span>
-          </div>
-          <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">{t('followerStats')}</h2>
+          <button 
+            onClick={() => navigate(-1)} 
+            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors text-lux-text-primary"
+          >
+            <span className="material-symbols-outlined text-xl">arrow_back_ios_new</span>
+          </button>
+          <h2 className="text-lux-text-primary text-base font-extrabold leading-tight tracking-tight flex-1 text-center">{t('followerStats')}</h2>
           <button 
             onClick={handleExport}
             disabled={filteredList.length === 0}
-            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lux-text-primary"
             title={t('exportCsv')}
           >
-            <span className="material-symbols-outlined text-xl text-[#181114] dark:text-white">download</span>
+            <span className="material-symbols-outlined text-xl">download</span>
           </button>
         </div>
       </div>
@@ -111,40 +114,46 @@ const FollowerStats = () => {
       <div className="px-4">
         {/* Chips/Tabs */}
         <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveTab(cat)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-colors ${
-                activeTab === cat
-                  ? 'bg-primary text-white shadow-md shadow-primary/25'
-                  : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-white/10'
-              }`}
-            >
-              {getTabLabel(cat)}
-              <span className={`ml-2 text-xs opacity-80 ${activeTab === cat ? 'text-white' : 'text-gray-400'}`}>
-                {getTabCount(cat)}
-              </span>
-            </button>
-          ))}
+          {categories.map((cat) => {
+            const active = activeTab === cat;
+            const count = getTabCount(cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => setActiveTab(cat)}
+                className={`px-4 py-2.5 rounded-full whitespace-nowrap text-xs font-bold transition-all duration-300 ${
+                  active
+                    ? 'bg-brand-gradient text-white shadow-md shadow-primary/25'
+                    : 'bg-lux-text-primary/[0.04] border border-lux-glass-border text-lux-text-secondary hover:text-lux-text-primary hover:bg-lux-text-primary/[0.08]'
+                }`}
+              >
+                {getTabLabel(cat)}
+                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
+                  active ? 'bg-white/20 text-white' : 'bg-lux-text-primary/5 text-lux-text-secondary/60'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Search Input */}
         <div className="relative mb-4">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xl">search</span>
+          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-lux-text-secondary/40 text-lg">search</span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-lux-text-primary/[0.04] border border-lux-glass-border text-lux-text-primary placeholder-lux-text-secondary/30 focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all text-xs font-semibold"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-lux-text-secondary hover:text-lux-text-primary"
             >
-              <span className="material-symbols-outlined text-xl">close</span>
+              <span className="material-symbols-outlined text-lg">close</span>
             </button>
           )}
         </div>
@@ -152,13 +161,13 @@ const FollowerStats = () => {
         {/* List */}
         {loading ? (
              <div className="flex flex-col items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                <p className="text-gray-400 text-sm mt-3">{t('scanningBtn')}</p>
+                <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent mb-3"></div>
+                <p className="text-lux-text-secondary text-xs font-semibold">{t('scanningBtn')}</p>
              </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2.5">
             {filteredList.map((user) => (
-              <UserCard 
+               <UserCard 
                 key={user.id || user.username}
                 username={user.username} 
                 name={user.fullName || user.username} 
@@ -167,11 +176,11 @@ const FollowerStats = () => {
               />
             ))}
             {filteredList.length === 0 && (
-                <div className="text-center py-12">
-                    <div className="bg-gray-50 dark:bg-white/5 size-16 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="material-symbols-outlined text-3xl text-gray-300">{searchQuery ? 'search_off' : 'inbox'}</span>
+                <div className="text-center py-16 glass-card rounded-2xl border border-lux-glass-border p-6">
+                    <div className="bg-lux-text-primary/5 size-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span className="material-symbols-outlined text-2xl text-lux-text-secondary/40">{searchQuery ? 'search_off' : 'inbox'}</span>
                     </div>
-                    <p className="text-gray-500 dark:text-gray-400">{searchQuery ? t('noResults') : t('noDataYet')}</p>
+                    <p className="text-lux-text-secondary text-xs font-semibold">{searchQuery ? t('noResults') : t('noDataYet')}</p>
                 </div>
             )}
           </div>
@@ -185,36 +194,35 @@ const UserCard = ({ username, name, img, type }: { username: string, name: strin
   const { t } = useLanguage();
   
   const handleAction = () => {
-    // Open Instagram profile in new tab
     window.open(`https://www.instagram.com/${username}/`, '_blank');
   };
 
   return (
-    <div className="flex items-center gap-4 bg-white dark:bg-white/5 px-4 min-h-[72px] py-3 justify-between rounded-lg shadow-sm border border-gray-100 dark:border-white/5">
-      <div className="flex items-center gap-4 cursor-pointer flex-1 min-w-0 overflow-hidden" onClick={handleAction}>
+    <div className="flex items-center gap-3 bg-lux-text-primary/[0.04] border border-lux-glass-border hover:border-lux-text-primary/[0.12] px-3.5 min-h-[64px] py-2.5 justify-between rounded-xl transition-all duration-300">
+      <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" onClick={handleAction}>
         <div className="relative shrink-0">
-          <Avatar src={img || ''} username={username} size="md" hasStory={type === 'Lost'} />
+          <Avatar src={img || ''} username={username} size="sm" hasStory={type === 'Lost'} />
           {type === 'Lost' && (
-             <div className="absolute -bottom-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white dark:border-background-dark flex items-center justify-center">
-                <span className="material-symbols-outlined text-white text-[12px] font-bold">person_remove</span>
+             <div className="absolute -bottom-1 -right-1 bg-[#EF4444] rounded-full p-0.5 border border-lux-bg flex items-center justify-center">
+                <span className="material-symbols-outlined text-white text-[10px] font-bold">person_remove</span>
              </div>
           )}
         </div>
         <div className="flex flex-col justify-center min-w-0 flex-1">
-          <p className="text-[#181114] dark:text-white text-base font-bold leading-normal truncate">{username}</p>
-          <p className="text-[#896175] dark:text-white/60 text-sm font-normal leading-normal truncate">{name}</p>
+          <p className="text-lux-text-primary text-xs font-extrabold truncate leading-tight">@{username}</p>
+          <p className="text-lux-text-secondary text-[10px] font-medium truncate mt-0.5">{name}</p>
         </div>
       </div>
       <div className="shrink-0">
         <button 
           onClick={handleAction}
-          className={`flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-xl h-9 px-4 ${
-            type === 'Following' 
-              ? 'bg-[#f4f0f2] dark:bg-white/10 text-[#181114] dark:text-white' 
-              : 'bg-primary text-white shadow-md shadow-primary/20'
-          } text-sm font-medium leading-normal w-fit`}
+          className={`flex min-w-[72px] cursor-pointer items-center justify-center rounded-lg h-8 px-3 text-xs font-bold transition-all duration-200
+            ${type === 'Following' 
+              ? 'border border-lux-text-primary/10 text-lux-text-primary hover:bg-lux-text-primary/5' 
+              : 'bg-brand-gradient text-white shadow-sm shadow-[#E1306C]/10 hover:opacity-90 active:scale-[0.98]'
+            }`}
         >
-          <span className="truncate">{t('view')}</span>
+          <span>{t('view')}</span>
         </button>
       </div>
     </div>
