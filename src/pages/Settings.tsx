@@ -99,44 +99,51 @@ const Settings = () => {
   };
 
   return (
-    <div className="pb-24">
-      <div className="sticky top-0 z-50 flex items-center bg-white/80 dark:bg-background-dark/80 backdrop-blur-md p-4 pb-2 justify-between border-b border-[#e6dbe0] dark:border-white/10">
-        <div onClick={() => navigate(-1)} className="text-[#181114] dark:text-white flex size-12 shrink-0 items-center justify-start cursor-pointer">
-          <span className="material-symbols-outlined">arrow_back_ios</span>
-        </div>
-        <h2 className="text-[#181114] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center">{t('settings')}</h2>
-        <div className="size-12 flex items-center justify-end">
-          <span className="material-symbols-outlined cursor-pointer text-[#181114] dark:text-white">more_horiz</span>
+    <div className="pb-24 bg-[#0B1020] text-[#F8FAFC] min-h-screen">
+      {/* Top Header */}
+      <div className="sticky top-0 z-50 flex items-center bg-[#0B1020]/80 backdrop-blur-md p-4 justify-between border-b border-white/[0.06]">
+        <button 
+          onClick={() => navigate(-1)} 
+          className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-white/5 border border-transparent hover:border-white/10 rounded-full transition-colors text-[#F8FAFC]"
+        >
+          <span className="material-symbols-outlined text-xl">arrow_back_ios_new</span>
+        </button>
+        <h2 className="text-[#F8FAFC] text-base font-extrabold leading-tight tracking-tight flex-1 text-center">{t('settings')}</h2>
+        <div className="size-10 flex items-center justify-end text-[#F8FAFC]">
+          <span className="material-symbols-outlined text-xl cursor-pointer">more_horiz</span>
         </div>
       </div>
 
+      {/* User Connection Card */}
       <div className="flex p-6">
-        <div className="flex w-full flex-col gap-4 items-center">
-          <div className="flex gap-4 flex-col items-center text-center">
-            <Avatar 
-              src={stats.avatarUrl || ''} 
-              username={stats.username || 'user'}
-              size="xl" 
-              hasStory={true}
-              className="border-4 border-white dark:border-background-dark"
-            />
-            <div>
-              <p className="text-[#181114] dark:text-white text-2xl font-bold leading-tight tracking-tight">
+        <div className="flex w-full flex-col items-center">
+          <div className="flex flex-col items-center text-center">
+            <div className="relative p-0.5 rounded-full bg-gradient-to-tr from-[#E1306C] via-[#833AB4] to-[#6366F1] shadow-[0_0_15px_rgba(225,48,108,0.2)]">
+              <div className="rounded-full bg-[#0B1020] p-1">
+                <Avatar 
+                  src={stats.avatarUrl || ''} 
+                  username={stats.username || 'user'}
+                  size="xl" 
+                />
+              </div>
+            </div>
+            <div className="mt-4">
+              <p className="text-[#F8FAFC] text-xl font-black tracking-tight">
                 @{stats.username || 'Not Connected'}
               </p>
-              <div className={`mt-2 inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+              <div className={`mt-2.5 inline-flex items-center px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${
                 loading 
-                  ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  ? 'bg-white/5 text-[#94A3B8]/60'
                   : stats.username 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'bg-red-50 dark:bg-red-900/20 text-red-500'
+                    ? 'bg-[#E1306C]/10 border border-[#E1306C]/20 text-[#E1306C]' 
+                    : 'bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444]'
               }`}>
                 {loading ? 'Loading...' : stats.username ? 'Logged in' : 'Not Logged in'}
               </div>
-              <p className={`text-sm font-normal mt-2 ${
+              <p className={`text-xs font-semibold mt-2.5 ${
                 stats.username 
-                  ? 'text-[#896175] dark:text-gray-400' 
-                  : 'text-red-400 dark:text-red-500'
+                  ? 'text-[#94A3B8]/60' 
+                  : 'text-[#EF4444]/70'
               }`}>
                 {stats.username ? 'Connected via Extension' : 'Open Instagram to connect'}
               </p>
@@ -145,12 +152,13 @@ const Settings = () => {
         </div>
       </div>
 
+      {/* Settings Options List */}
       <div className="px-4">
-        <h3 className="text-[#896175] dark:text-gray-400 text-[13px] font-semibold uppercase tracking-wider px-1 pb-2">{t('appSettings')}</h3>
-        <div className="bg-white dark:bg-white/5 border border-[#e6dbe0] dark:border-white/10 rounded-lg overflow-hidden shadow-sm">
+        <h3 className="text-[#94A3B8]/50 text-[10px] font-black uppercase tracking-widest px-1 pb-2">{t('appSettings')}</h3>
+        <div className="glass-card rounded-2xl overflow-hidden border border-white/[0.04]">
           <SettingsItem 
             icon="language" 
-            color="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400" 
+            color="bg-blue-500/10 border border-blue-500/20 text-blue-400" 
             label={t('language')}
             value={language === 'en' ? 'English' : 'Tiếng Việt'}
             hasChevron
@@ -158,14 +166,14 @@ const Settings = () => {
           />
           <SettingsItem 
             icon="qr_code_scanner" 
-            color="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" 
+            color="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" 
             label={t('scanning')}
             hasChevron
             to="/settings/detailed"
           />
           <SettingsItem 
             icon="notifications" 
-            color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" 
+            color="bg-amber-500/10 border border-amber-500/20 text-amber-400" 
             label={t('notifications')}
             hasToggle
             toggleChecked={notifications}
@@ -173,7 +181,7 @@ const Settings = () => {
           />
           <SettingsItem 
             icon="dark_mode" 
-            color="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400" 
+            color="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400" 
             label={t('darkMode')}
             hasToggle
             toggleChecked={isDarkMode}
@@ -183,14 +191,15 @@ const Settings = () => {
         </div>
       </div>
 
+      {/* Footer / Actions */}
       <div className="px-4 mt-8 flex flex-col items-center gap-4">
-        <button className="w-full bg-red-50 dark:bg-red-500/10 text-red-500 font-bold py-4 rounded-lg flex items-center justify-center gap-2 active:bg-red-100 dark:active:bg-red-500/20 transition-colors">
-          <span className="material-symbols-outlined text-xl">logout</span>
+        <button className="w-full bg-[#EF4444]/10 hover:bg-[#EF4444]/15 border border-[#EF4444]/20 text-[#EF4444] font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-colors cursor-pointer text-xs">
+          <span className="material-symbols-outlined text-lg">logout</span>
           {t('logOut')}
         </button>
         <div className="flex flex-col items-center gap-1">
-          <p className="text-[#896175] dark:text-gray-500 text-xs font-medium">{t('version')} 2.4.1</p>
-          <p className="text-[#896175]/60 dark:text-gray-600 text-[10px] uppercase tracking-tighter">{t('poweredBy')}</p>
+          <p className="text-[#94A3B8]/40 text-[10px] font-bold">{t('version')} 2.4.1</p>
+          <p className="text-[#94A3B8]/20 text-[8px] uppercase font-black tracking-widest">{t('poweredBy')}</p>
         </div>
       </div>
     </div>

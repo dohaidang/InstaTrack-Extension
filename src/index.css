@@ -4,7 +4,7 @@
 
 /* ===== ROOT STYLES ===== */
 :root {
-    font-family: 'Plus Jakarta Sans', Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
     font-synthesis: none;
@@ -31,28 +31,70 @@ body,
 }
 
 html {
-    background-color: #f8f8f8;
-}
-
-html.dark {
-    background-color: #121212;
+    background-color: #0B1020 !important;
 }
 
 body {
-    background-color: #f8f8f8;
-    color: #181114;
-}
-
-html.dark body {
-    background-color: #121212;
-    color: #ffffff;
+    background-color: #0B1020 !important;
+    color: #F8FAFC !important;
 }
 
 #root {
     display: flex;
     flex-direction: column;
     min-height: 100%;
-    background-color: inherit;
+    background-color: #0B1020;
+}
+
+/* ===== LUXURY CLASS UTILITIES ===== */
+.glass-card {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px) saturate(120%);
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.glass-dock {
+    background: rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(24px) saturate(120%);
+    -webkit-backdrop-filter: blur(24px) saturate(120%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.ambient-glow {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.ambient-glow::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: -1;
+}
+
+.ambient-glow:hover {
+    border-color: rgba(99, 102, 241, 0.3) !important;
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+}
+
+.ambient-glow:hover::after {
+    opacity: 1;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* ===== THIN SCROLLBAR ===== */
