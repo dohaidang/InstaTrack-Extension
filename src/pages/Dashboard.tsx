@@ -169,7 +169,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
+    <div className="flex flex-col gap-4 px-4 pt-4 pb-8 transition-colors duration-200">
       {/* ── Profile Hero ── */}
       <section className="glass-card rounded-2xl p-5 relative overflow-hidden flex flex-col gap-4">
         {/* ambient backlights */}
@@ -179,12 +179,12 @@ const Dashboard = () => {
         {/* top header line */}
         <div className="flex justify-between items-center z-10">
           <div className="flex flex-col">
-            <span className="text-[10px] tracking-widest text-[#94A3B8] font-black uppercase">Digital Curator</span>
+            <span className="text-[10px] tracking-widest text-lux-text-secondary font-black uppercase">Digital Curator</span>
             <span className="text-[9px] text-[#E1306C] font-extrabold uppercase tracking-wider mt-0.5">Social Intelligence</span>
           </div>
           <Link to="/settings">
             <button className="size-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 hover:border-white/20 transition-all cursor-pointer">
-              <span className="material-symbols-outlined text-[18px] text-[#F8FAFC]">settings</span>
+              <span className="material-symbols-outlined text-[18px] text-lux-text-primary">settings</span>
             </button>
           </Link>
         </div>
@@ -193,7 +193,7 @@ const Dashboard = () => {
         <div className="flex items-center gap-4 z-10">
           {/* glass circle frame */}
           <div className="relative p-0.5 rounded-full bg-gradient-to-tr from-[#E1306C] via-[#833AB4] to-[#6366F1] shadow-[0_0_12px_rgba(225,48,108,0.25)] shrink-0">
-            <div className="rounded-full bg-[#0B1020] p-[2px]">
+            <div className="rounded-full bg-lux-bg p-[2px]">
               <Avatar
                 src={stats.avatarBase64 || stats.avatarUrl || ''}
                 username={stats.username || targetUsername || 'dangdohaii'}
@@ -202,13 +202,13 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex flex-col min-w-0 flex-1">
-            <h2 className="text-[#F8FAFC] text-base font-extrabold tracking-tight truncate leading-tight">
+            <h2 className="text-lux-text-primary text-base font-extrabold tracking-tight truncate leading-tight">
               @{stats.username || targetUsername || 'dangdohaii'}
             </h2>
-            <p className="text-[10px] text-[#94A3B8] font-medium leading-none mt-1">
+            <p className="text-[10px] text-lux-text-secondary font-medium leading-none mt-1">
               Instagram Intelligence Dashboard
             </p>
-            <p className="text-[9px] text-[#94A3B8]/60 mt-1.5 font-semibold">
+            <p className="text-[9px] text-lux-text-secondary/60 mt-1.5 font-semibold">
               Last Sync: {stats.lastUpdated || '29 May 2026 • 14:25'}
             </p>
           </div>
@@ -217,14 +217,14 @@ const Dashboard = () => {
         {/* quick metrics row */}
         <div className="grid grid-cols-2 gap-4 border-t border-white/[0.06] pt-3.5 z-10">
           <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-[#94A3B8] font-bold">Followers</span>
-            <span className="text-lg font-black text-[#F8FAFC] tracking-tight">
+            <span className="text-[9px] uppercase tracking-wider text-lux-text-secondary font-bold">Followers</span>
+            <span className="text-lg font-black text-lux-text-primary tracking-tight">
               {(stats.totalFollowers || 1197).toLocaleString()}
             </span>
           </div>
           <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-[#94A3B8] font-bold">Following</span>
-            <span className="text-lg font-black text-[#F8FAFC] tracking-tight">
+            <span className="text-[9px] uppercase tracking-wider text-lux-text-secondary font-bold">Following</span>
+            <span className="text-lg font-black text-lux-text-primary tracking-tight">
               {(stats.totalFollowing || 212).toLocaleString()}
             </span>
           </div>
@@ -240,7 +240,7 @@ const Dashboard = () => {
               ref={inputRef}
               type="text"
               placeholder="Username (e.g. dangdohaii)"
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl py-2.5 pl-9 pr-4 text-[#F8FAFC] font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all placeholder-[#94A3B8]/40"
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl py-2.5 pl-9 pr-4 text-lux-text-primary font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all placeholder-lux-text-secondary/40"
               value={targetUsername}
               onChange={(e) => setTargetUsername(e.target.value)}
               onFocus={() => usernameHistory.length > 0 && setShowHistoryDropdown(true)}
@@ -251,10 +251,10 @@ const Dashboard = () => {
           {showHistoryDropdown && usernameHistory.length > 0 && (
             <div
               ref={dropdownRef}
-              className="absolute z-50 w-full mt-1 bg-[#111827] border border-white/[0.08] rounded-xl shadow-xl max-h-40 overflow-y-auto"
+              className="absolute z-50 w-full mt-1 bg-lux-bg-sec border border-white/[0.08] rounded-xl shadow-xl max-h-40 overflow-y-auto"
             >
               <div className="flex justify-between items-center px-3 py-2 border-b border-white/[0.04]">
-                <span className="text-[8px] text-[#94A3B8] uppercase font-bold tracking-widest">{t('recent')}</span>
+                <span className="text-[8px] text-lux-text-secondary uppercase font-bold tracking-widest">{t('recent')}</span>
                 <button
                   onClick={async () => {
                     await clearUsernameHistory();
@@ -270,9 +270,9 @@ const Dashboard = () => {
                 <button
                   key={index}
                   onClick={() => { setTargetUsername(username); setShowHistoryDropdown(false); }}
-                  className="w-full text-left px-3 py-2 hover:bg-white/[0.04] text-[#F8FAFC] text-xs flex items-center gap-2 transition-colors cursor-pointer"
+                  className="w-full text-left px-3 py-2 hover:bg-white/[0.04] text-lux-text-primary text-xs flex items-center gap-2 transition-colors cursor-pointer"
                 >
-                  <span className="material-symbols-outlined text-[#94A3B8] text-[13px]">history</span>
+                  <span className="material-symbols-outlined text-lux-text-secondary text-[13px]">history</span>
                   @{username}
                 </button>
               ))}
@@ -301,12 +301,12 @@ const Dashboard = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E1306C] opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-[#E1306C]" />
               </span>
-              <span className="text-xs font-bold text-[#F8FAFC]">Syncing Instagram Data</span>
+              <span className="text-xs font-bold text-lux-text-primary">Syncing Instagram Data</span>
             </div>
             <span className="text-xs font-black text-[#E1306C]">{getProgressPercent()}%</span>
           </div>
           
-          <div className="flex justify-between items-center text-[10px] text-[#94A3B8] font-medium">
+          <div className="flex justify-between items-center text-[10px] text-lux-text-secondary font-medium">
             <span>{statusText || 'Scraping accounts...'}</span>
             <span>
               {scanProgress ? `${scanProgress.current} / ${scanProgress.total || stats.totalFollowers || 1197}` : `516 / 1197`} Scanned
@@ -321,7 +321,7 @@ const Dashboard = () => {
             />
           </div>
 
-          <div className="flex justify-between items-center text-[9px] text-[#94A3B8]/60 mt-0.5">
+          <div className="flex justify-between items-center text-[9px] text-lux-text-secondary/60 mt-0.5">
             <span>AI-Powered Selector Engine</span>
             <span>Est. remaining: ~45s</span>
           </div>
@@ -333,13 +333,13 @@ const Dashboard = () => {
         {/* Card 1: New Followers */}
         <Link to="/stats?tab=new" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
           <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-[#94A3B8] uppercase tracking-wider">New Followers</span>
+            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">New Followers</span>
             <div className="size-6 rounded-lg bg-[#22C55E]/10 flex items-center justify-center text-[#22C55E]">
               <span className="material-symbols-outlined text-[16px] animate-bounce">trending_up</span>
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-[#F8FAFC]">+{stats.newFollowersCount || 1}</h4>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">+{stats.newFollowersCount || 1}</h4>
             <span className="text-[8px] text-[#22C55E] font-bold flex items-center gap-0.5 mt-1">
               <span className="size-1 bg-[#22C55E] rounded-full inline-block animate-ping" />
               Gain Detected
@@ -350,13 +350,13 @@ const Dashboard = () => {
         {/* Card 2: Lost Followers */}
         <Link to="/stats?tab=lost" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
           <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-[#94A3B8] uppercase tracking-wider">Lost Followers</span>
+            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">Lost Followers</span>
             <div className="size-6 rounded-lg bg-[#EF4444]/10 flex items-center justify-center text-[#EF4444]">
               <span className="material-symbols-outlined text-[16px]">person_remove</span>
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-[#F8FAFC]">{stats.lostFollowersCount || 0}</h4>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">{stats.lostFollowersCount || 0}</h4>
             <span className="text-[8px] text-[#EF4444] font-bold flex items-center gap-0.5 mt-1">
               <span className="size-1 bg-[#EF4444] rounded-full inline-block" />
               Alert Active
@@ -367,13 +367,13 @@ const Dashboard = () => {
         {/* Card 3: Not Following Back */}
         <Link to="/stats?tab=notfollowing" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
           <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-[#94A3B8] uppercase tracking-wider">Not Follow Back</span>
+            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">Not Follow Back</span>
             <div className="size-6 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center text-[#F59E0B]">
               <span className="material-symbols-outlined text-[16px]">person_search</span>
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-[#F8FAFC]">{stats.notFollowingBackCount || 104}</h4>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">{stats.notFollowingBackCount || 104}</h4>
             <span className="text-[8px] text-[#F59E0B] font-bold flex items-center gap-0.5 mt-1">
               <span className="px-1.5 py-0.5 bg-[#F59E0B]/10 rounded-full">Warning</span>
             </span>
@@ -383,13 +383,13 @@ const Dashboard = () => {
         {/* Card 4: Mutual Friends */}
         <Link to="/stats?tab=mutual" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
           <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-[#94A3B8] uppercase tracking-wider">Mutual Friends</span>
+            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">Mutual Friends</span>
             <div className="size-6 rounded-lg bg-[#6366F1]/10 flex items-center justify-center text-[#6366F1]">
               <span className="material-symbols-outlined text-[16px]">group</span>
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-[#F8FAFC]">{stats.mutualCount || 108}</h4>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">{stats.mutualCount || 108}</h4>
             <span className="text-[8px] text-[#6366F1] font-bold flex items-center gap-0.5 mt-1">
               <span className="px-1.5 py-0.5 bg-[#6366F1]/10 rounded-full">Connected</span>
             </span>
@@ -399,7 +399,7 @@ const Dashboard = () => {
 
       {/* ── Follower Quality Analytics ── */}
       <section className="glass-card rounded-2xl p-5 relative overflow-hidden">
-        <h3 className="text-[10px] font-bold text-[#F8FAFC] uppercase tracking-wider mb-4">Follower Quality</h3>
+        <h3 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider mb-4">Follower Quality</h3>
         <div className="flex items-center justify-between gap-6">
           <div className="relative flex-shrink-0 flex items-center justify-center">
             {/* SVG Donut Chart */}
@@ -434,8 +434,8 @@ const Dashboard = () => {
               />
             </svg>
             <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-xs font-black text-[#F8FAFC] leading-none">{mutualPercent}%</span>
-              <span className="text-[7px] text-[#94A3B8]/60 mt-0.5 uppercase font-bold">Mutual</span>
+              <span className="text-xs font-black text-lux-text-primary leading-none">{mutualPercent}%</span>
+              <span className="text-[7px] text-lux-text-secondary/60 mt-0.5 uppercase font-bold">Mutual</span>
             </div>
           </div>
 
@@ -443,18 +443,18 @@ const Dashboard = () => {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#6366F1]" />
-                <span className="text-[10px] font-extrabold text-[#F8FAFC]">Mutual Friends</span>
+                <span className="text-[10px] font-extrabold text-lux-text-primary">Mutual Friends</span>
               </div>
-              <span className="text-[11px] text-[#94A3B8] pl-4 font-semibold mt-0.5">
+              <span className="text-[11px] text-lux-text-secondary pl-4 font-semibold mt-0.5">
                 {mutualCount} ({mutualPercent}%)
               </span>
             </div>
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-[#E1306C]" />
-                <span className="text-[10px] font-extrabold text-[#F8FAFC]">Not Following Back</span>
+                <span className="text-[10px] font-extrabold text-lux-text-primary">Not Following Back</span>
               </div>
-              <span className="text-[11px] text-[#94A3B8] pl-4 font-semibold mt-0.5">
+              <span className="text-[11px] text-lux-text-secondary pl-4 font-semibold mt-0.5">
                 {notFollowingCount} ({notFollowingPercent}%)
               </span>
             </div>
@@ -464,7 +464,7 @@ const Dashboard = () => {
 
       {/* ── Recent Activity Feed ── */}
       <section className="space-y-3">
-        <h3 className="text-[10px] font-bold text-[#F8FAFC] uppercase tracking-wider">Recent Activity</h3>
+        <h3 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider">Recent Activity</h3>
         <div className="flex flex-col gap-2">
           {activities.map((act, i) => (
             <div key={i} className="glass-card rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
@@ -476,11 +476,11 @@ const Dashboard = () => {
                   className="w-7 h-7 shrink-0"
                 />
                 <div className="min-w-0">
-                  <span className="font-extrabold text-[#F8FAFC] truncate block text-xs">@{act.username}</span>
-                  <span className="text-[9px] text-[#94A3B8]">{act.label}</span>
+                  <span className="font-extrabold text-lux-text-primary truncate block text-xs">@{act.username}</span>
+                  <span className="text-[9px] text-lux-text-secondary">{act.label}</span>
                 </div>
               </div>
-              <span className="text-[9px] text-[#94A3B8]/50 shrink-0 font-semibold">{act.time}</span>
+              <span className="text-[9px] text-lux-text-secondary/50 shrink-0 font-semibold">{act.time}</span>
             </div>
           ))}
         </div>
@@ -495,8 +495,8 @@ const Dashboard = () => {
             <span className="material-symbols-outlined text-[18px]">smart_toy</span>
           </div>
           <div className="flex flex-col">
-            <h4 className="text-[10px] font-bold text-[#F8FAFC] uppercase tracking-wider">Account Recommendations</h4>
-            <p className="text-xs text-[#94A3B8] mt-1">
+            <h4 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider">Account Recommendations</h4>
+            <p className="text-xs text-lux-text-secondary mt-1">
               {notFollowingCount} accounts don't follow you back.
             </p>
           </div>
@@ -511,13 +511,13 @@ const Dashboard = () => {
         <div className="grid grid-cols-2 gap-3 mt-1">
           <Link
             to="/stats?tab=notfollowing"
-            className="py-2.5 rounded-xl border border-white/10 hover:border-white/20 text-center font-bold text-[10px] text-[#F8FAFC] hover:bg-white/5 transition-all"
+            className="py-2.5 rounded-xl border border-white/10 hover:border-white/20 text-center font-bold text-[10px] text-lux-text-primary hover:bg-white/5 transition-all"
           >
             View Accounts
           </Link>
           <Link
             to="/stats?tab=notfollowing"
-            className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-center font-bold text-[10px] text-[#0B1020] transition-all shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
+            className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-center font-bold text-[10px] text-lux-bg transition-all shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
           >
             Unfollow Selected
           </Link>

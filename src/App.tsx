@@ -33,12 +33,12 @@ const BottomNav = () => {
               to={to}
               className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer flex-1
                 ${active
-                  ? 'text-white'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'text-lux-text-primary'
+                  : 'text-lux-text-secondary hover:text-lux-text-primary'
                 }`}
             >
               {active && (
-                <span className="absolute inset-0 bg-white/[0.08] rounded-full border border-white/[0.05] z-0" />
+                <span className="absolute inset-0 bg-lux-text-primary/[0.08] rounded-full border border-lux-text-primary/[0.05] z-0" />
               )}
               <span
                 className="material-symbols-outlined text-[20px] relative z-10"
@@ -61,7 +61,7 @@ const BottomNav = () => {
 // ── Layout ────────────────────────────────────────────────────────────────────
 const Layout = ({ children }: React.PropsWithChildren) => {
   return (
-    <div className="w-[360px] h-[600px] bg-[#0B1020] text-[#F8FAFC] flex flex-col overflow-hidden relative">
+    <div className="w-[360px] h-[600px] bg-lux-bg text-lux-text-primary flex flex-col overflow-hidden relative transition-colors duration-200">
       <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 no-scrollbar">
         {children}
       </main>

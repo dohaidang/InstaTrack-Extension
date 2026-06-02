@@ -88,22 +88,22 @@ const ScanHistory = () => {
   };
 
   return (
-    <div className="pb-24 bg-[#0B1020] text-[#F8FAFC] min-h-screen">
+    <div className="pb-24 bg-lux-bg text-lux-text-primary min-h-screen">
       {/* Sticky Top Navigation */}
-      <div className="sticky top-0 z-50 bg-[#0B1020]/80 backdrop-blur-md border-b border-white/[0.06]">
+      <div className="sticky top-0 z-50 bg-lux-bg/80 backdrop-blur-md border-b border-lux-glass-border">
         <div className="flex items-center p-4 justify-between max-w-md mx-auto">
           <button 
             onClick={() => navigate(-1)} 
-            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-white/5 border border-transparent hover:border-white/10 rounded-full transition-colors text-[#F8FAFC]"
+            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors text-lux-text-primary"
           >
             <span className="material-symbols-outlined text-xl">arrow_back_ios_new</span>
           </button>
-          <h2 className="text-[#F8FAFC] text-base font-extrabold leading-tight tracking-tight flex-1 text-center">{t('scanHistory')}</h2>
+          <h2 className="text-lux-text-primary text-base font-extrabold leading-tight tracking-tight flex-1 text-center">{t('scanHistory')}</h2>
           <div className="flex w-10 justify-end">
             {history.length > 0 && (
               <button 
                 onClick={clearHistory}
-                className="flex size-10 cursor-pointer items-center justify-center text-[#EF4444] hover:bg-white/5 border border-transparent hover:border-white/10 rounded-full transition-colors"
+                className="flex size-10 cursor-pointer items-center justify-center text-[#EF4444] hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors"
                 title={t('clearHistory')}
               >
                 <span className="material-symbols-outlined text-xl">delete</span>
@@ -118,18 +118,18 @@ const ScanHistory = () => {
         {loading && (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent mb-3"></div>
-            <p className="text-[#94A3B8] text-xs font-semibold">Loading history...</p>
+            <p className="text-lux-text-secondary text-xs font-semibold">Loading history...</p>
           </div>
         )}
 
         {/* Empty State */}
         {!loading && history.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 glass-card rounded-2xl p-6 border border-white/[0.04]">
-            <div className="size-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
-              <span className="material-symbols-outlined text-2xl text-[#94A3B8]/40">history</span>
+          <div className="flex flex-col items-center justify-center py-16 glass-card rounded-2xl p-6 border border-lux-glass-border">
+            <div className="size-12 rounded-full bg-lux-text-primary/5 flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-2xl text-lux-text-secondary/40">history</span>
             </div>
-            <p className="text-[#94A3B8] text-xs font-bold text-center">{t('noHistory')}</p>
-            <p className="text-[#94A3B8]/50 text-[10px] mt-1 text-center font-medium">
+            <p className="text-lux-text-secondary text-xs font-bold text-center">{t('noHistory')}</p>
+            <p className="text-lux-text-secondary/50 text-[10px] mt-1 text-center font-medium">
               Run your first scan to see history here
             </p>
           </div>
@@ -155,8 +155,8 @@ const ScanHistory = () => {
 
         {/* Summary */}
         {!loading && history.length > 0 && (
-          <div className="mt-6 p-4 glass-card rounded-xl border border-white/[0.04] text-center">
-            <p className="text-[11px] text-[#94A3B8] font-bold">
+          <div className="mt-6 p-4 glass-card rounded-xl border border-lux-glass-border text-center">
+            <p className="text-[11px] text-lux-text-secondary font-bold">
               Total {history.length} {t('scanned')}
             </p>
           </div>
@@ -186,14 +186,14 @@ const HistoryCard = ({
   const { t } = useLanguage();
   return (
     <div className={`glass-card p-4 rounded-xl flex flex-col gap-3 border ${
-      isLatest ? 'border-[#E1306C]/30 shadow-[0_0_15px_rgba(225,48,108,0.05)]' : 'border-white/[0.06]'
+      isLatest ? 'border-[#E1306C]/30 shadow-[0_0_15px_rgba(225,48,108,0.05)]' : 'border-lux-glass-border'
     }`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[#E1306C] text-lg">calendar_today</span>
           <div>
-            <p className="text-[#F8FAFC] text-xs font-extrabold leading-none">{date}</p>
-            <p className="text-[9px] text-[#94A3B8]/60 font-semibold mt-1">{time}</p>
+            <p className="text-lux-text-primary text-xs font-extrabold leading-none">{date}</p>
+            <p className="text-[9px] text-lux-text-secondary/60 font-semibold mt-1">{time}</p>
           </div>
         </div>
         {isLatest && (
@@ -203,14 +203,14 @@ const HistoryCard = ({
         )}
       </div>
       
-      <div className="grid grid-cols-4 gap-2 border-t border-white/[0.04] pt-3">
-        <div className="text-center p-2 bg-white/[0.02] rounded-lg border border-white/[0.04]">
-          <p className="text-sm font-black text-[#F8FAFC]">{followerCount}</p>
-          <p className="text-[8px] text-[#94A3B8]/60 font-bold uppercase tracking-wider mt-0.5">{t('followers')}</p>
+      <div className="grid grid-cols-4 gap-2 border-t border-lux-glass-border pt-3">
+        <div className="text-center p-2 bg-lux-text-primary/[0.02] rounded-lg border border-lux-glass-border">
+          <p className="text-sm font-black text-lux-text-primary">{followerCount}</p>
+          <p className="text-[8px] text-lux-text-secondary/60 font-bold uppercase tracking-wider mt-0.5">{t('followers')}</p>
         </div>
-        <div className="text-center p-2 bg-white/[0.02] rounded-lg border border-white/[0.04]">
-          <p className="text-sm font-black text-[#F8FAFC]">{followingCount}</p>
-          <p className="text-[8px] text-[#94A3B8]/60 font-bold uppercase tracking-wider mt-0.5">{t('following')}</p>
+        <div className="text-center p-2 bg-lux-text-primary/[0.02] rounded-lg border border-lux-glass-border">
+          <p className="text-sm font-black text-lux-text-primary">{followingCount}</p>
+          <p className="text-[8px] text-lux-text-secondary/60 font-bold uppercase tracking-wider mt-0.5">{t('following')}</p>
         </div>
         <div className="text-center p-2 bg-[#22C55E]/5 rounded-lg border border-[#22C55E]/10">
           <p className="text-sm font-black text-[#22C55E]">+{newCount}</p>

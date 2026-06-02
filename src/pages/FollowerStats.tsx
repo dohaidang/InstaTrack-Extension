@@ -89,21 +89,21 @@ const FollowerStats = () => {
   };
 
   return (
-    <div className="pb-24 pt-4 min-h-screen bg-[#0B1020] text-[#F8FAFC]">
+    <div className="pb-24 pt-4 min-h-screen bg-lux-bg text-lux-text-primary">
       {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-50 bg-[#0B1020]/80 backdrop-blur-md border-b border-white/[0.06] -mt-4 mb-4">
+      <div className="sticky top-0 z-50 bg-lux-bg/80 backdrop-blur-md border-b border-lux-glass-border -mt-4 mb-4">
         <div className="flex items-center p-4 justify-between max-w-md mx-auto">
           <button 
             onClick={() => navigate(-1)} 
-            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-white/5 border border-transparent hover:border-white/10 rounded-full transition-colors text-[#F8FAFC]"
+            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors text-lux-text-primary"
           >
             <span className="material-symbols-outlined text-xl">arrow_back_ios_new</span>
           </button>
-          <h2 className="text-[#F8FAFC] text-base font-extrabold leading-tight tracking-tight flex-1 text-center">{t('followerStats')}</h2>
+          <h2 className="text-lux-text-primary text-base font-extrabold leading-tight tracking-tight flex-1 text-center">{t('followerStats')}</h2>
           <button 
             onClick={handleExport}
             disabled={filteredList.length === 0}
-            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-white/5 border border-transparent hover:border-white/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-[#F8FAFC]"
+            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lux-text-primary"
             title={t('exportCsv')}
           >
             <span className="material-symbols-outlined text-xl">download</span>
@@ -124,12 +124,12 @@ const FollowerStats = () => {
                 className={`px-4 py-2.5 rounded-full whitespace-nowrap text-xs font-bold transition-all duration-300 ${
                   active
                     ? 'bg-brand-gradient text-white shadow-md shadow-primary/25'
-                    : 'bg-white/[0.04] border border-white/[0.08] text-[#94A3B8] hover:text-white hover:bg-white/[0.08]'
+                    : 'bg-lux-text-primary/[0.04] border border-lux-glass-border text-lux-text-secondary hover:text-lux-text-primary hover:bg-lux-text-primary/[0.08]'
                 }`}
               >
                 {getTabLabel(cat)}
                 <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
-                  active ? 'bg-white/20 text-white' : 'bg-white/5 text-[#94A3B8]/60'
+                  active ? 'bg-white/20 text-white' : 'bg-lux-text-primary/5 text-lux-text-secondary/60'
                 }`}>
                   {count}
                 </span>
@@ -140,18 +140,18 @@ const FollowerStats = () => {
 
         {/* Search Input */}
         <div className="relative mb-4">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#94A3B8]/40 text-lg">search</span>
+          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-lux-text-secondary/40 text-lg">search</span>
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-[#F8FAFC] placeholder-[#94A3B8]/30 focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all text-xs font-semibold"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-lux-text-primary/[0.04] border border-lux-glass-border text-lux-text-primary placeholder-lux-text-secondary/30 focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all text-xs font-semibold"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-lux-text-secondary hover:text-lux-text-primary"
             >
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
@@ -162,12 +162,12 @@ const FollowerStats = () => {
         {loading ? (
              <div className="flex flex-col items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent mb-3"></div>
-                <p className="text-[#94A3B8] text-xs font-semibold">{t('scanningBtn')}</p>
+                <p className="text-lux-text-secondary text-xs font-semibold">{t('scanningBtn')}</p>
              </div>
         ) : (
           <div className="flex flex-col gap-2.5">
             {filteredList.map((user) => (
-              <UserCard 
+               <UserCard 
                 key={user.id || user.username}
                 username={user.username} 
                 name={user.fullName || user.username} 
@@ -176,11 +176,11 @@ const FollowerStats = () => {
               />
             ))}
             {filteredList.length === 0 && (
-                <div className="text-center py-16 glass-card rounded-2xl border border-white/[0.04] p-6">
-                    <div className="bg-white/5 size-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="material-symbols-outlined text-2xl text-[#94A3B8]/40">{searchQuery ? 'search_off' : 'inbox'}</span>
+                <div className="text-center py-16 glass-card rounded-2xl border border-lux-glass-border p-6">
+                    <div className="bg-lux-text-primary/5 size-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <span className="material-symbols-outlined text-2xl text-lux-text-secondary/40">{searchQuery ? 'search_off' : 'inbox'}</span>
                     </div>
-                    <p className="text-[#94A3B8] text-xs font-semibold">{searchQuery ? t('noResults') : t('noDataYet')}</p>
+                    <p className="text-lux-text-secondary text-xs font-semibold">{searchQuery ? t('noResults') : t('noDataYet')}</p>
                 </div>
             )}
           </div>
@@ -198,19 +198,19 @@ const UserCard = ({ username, name, img, type }: { username: string, name: strin
   };
 
   return (
-    <div className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.12] px-3.5 min-h-[64px] py-2.5 justify-between rounded-xl transition-all duration-300">
+    <div className="flex items-center gap-3 bg-lux-text-primary/[0.04] border border-lux-glass-border hover:border-lux-text-primary/[0.12] px-3.5 min-h-[64px] py-2.5 justify-between rounded-xl transition-all duration-300">
       <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" onClick={handleAction}>
         <div className="relative shrink-0">
           <Avatar src={img || ''} username={username} size="sm" hasStory={type === 'Lost'} />
           {type === 'Lost' && (
-             <div className="absolute -bottom-1 -right-1 bg-[#EF4444] rounded-full p-0.5 border border-[#0B1020] flex items-center justify-center">
+             <div className="absolute -bottom-1 -right-1 bg-[#EF4444] rounded-full p-0.5 border border-lux-bg flex items-center justify-center">
                 <span className="material-symbols-outlined text-white text-[10px] font-bold">person_remove</span>
              </div>
           )}
         </div>
         <div className="flex flex-col justify-center min-w-0 flex-1">
-          <p className="text-[#F8FAFC] text-xs font-extrabold truncate leading-tight">@{username}</p>
-          <p className="text-[#94A3B8] text-[10px] font-medium truncate mt-0.5">{name}</p>
+          <p className="text-lux-text-primary text-xs font-extrabold truncate leading-tight">@{username}</p>
+          <p className="text-lux-text-secondary text-[10px] font-medium truncate mt-0.5">{name}</p>
         </div>
       </div>
       <div className="shrink-0">
@@ -218,7 +218,7 @@ const UserCard = ({ username, name, img, type }: { username: string, name: strin
           onClick={handleAction}
           className={`flex min-w-[72px] cursor-pointer items-center justify-center rounded-lg h-8 px-3 text-xs font-bold transition-all duration-200
             ${type === 'Following' 
-              ? 'border border-white/10 text-[#F8FAFC] hover:bg-white/5' 
+              ? 'border border-lux-text-primary/10 text-lux-text-primary hover:bg-lux-text-primary/5' 
               : 'bg-brand-gradient text-white shadow-sm shadow-[#E1306C]/10 hover:opacity-90 active:scale-[0.98]'
             }`}
         >
