@@ -252,6 +252,18 @@ const Dashboard = () => {
         </button>
       </section>
 
+      {/* ── Last scan error ── */}
+      {!isScanning && scanProgress?.phase === 'error' && (
+        <section className="glass-card rounded-2xl p-4 border border-red-500/30 flex items-start gap-3">
+          <span className="material-symbols-outlined text-[18px] text-red-400 shrink-0">error</span>
+          <div className="flex flex-col gap-1 min-w-0">
+            <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Scan failed</span>
+            <p className="text-[11px] text-lux-text-secondary leading-relaxed break-words">{scanProgress.message}</p>
+            <p className="text-[9px] text-lux-text-secondary/60">Previous data was kept unchanged.</p>
+          </div>
+        </section>
+      )}
+
       {/* ── Sync Status Widget ── */}
       {isScanning && (
         <section className="glass-card rounded-2xl p-5 relative overflow-hidden flex flex-col gap-3">
