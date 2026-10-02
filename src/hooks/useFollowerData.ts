@@ -42,8 +42,8 @@ export const useFollowerData = () => {
             }
 
             setStats({
-                totalFollowers: snapshotData?.followers?.length || 0,
-                totalFollowing: snapshotData?.following?.length || 0,
+                totalFollowers: snapshotData?.reported?.followers || snapshotData?.followers?.length || 0,
+                totalFollowing: snapshotData?.reported?.following || snapshotData?.following?.length || 0,
 
                 newFollowersCount: diffData?.counts?.new || diffData?.newFollowers?.length || 0,
                 lostFollowersCount: diffData?.counts?.lost || diffData?.lostFollowers?.length || 0,
@@ -56,7 +56,7 @@ export const useFollowerData = () => {
                 notFollowingBackList: diffData?.notFollowingBack || [],
 
                 lastUpdated: lastDate || null,
-                username: ownerProfile?.username || 'Me',
+                username: ownerProfile?.username || null,
                 avatarUrl: ownerProfile?.avatarUrl || null,
                 avatarBase64: (result.ownerAvatarBase64 as string) || null,
                 followingCount: ownerProfile?.followingCount || 0,

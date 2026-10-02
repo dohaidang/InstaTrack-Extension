@@ -32,8 +32,8 @@ const ScanHistory = () => {
       const entries: SnapshotEntry[] = Object.keys(snapshots)
         .map(date => ({
           date,
-          followerCount: snapshots[date]?.followers?.length || 0,
-          followingCount: snapshots[date]?.following?.length || 0,
+          followerCount: snapshots[date]?.reported?.followers || snapshots[date]?.followers?.length || 0,
+          followingCount: snapshots[date]?.reported?.following || snapshots[date]?.following?.length || 0,
           newCount: diffs[date]?.newFollowers?.length || diffs[date]?.counts?.new || 0,
           lostCount: diffs[date]?.lostFollowers?.length || diffs[date]?.counts?.lost || 0,
         }))
