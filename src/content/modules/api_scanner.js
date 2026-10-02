@@ -11,6 +11,7 @@
     const FOLLOWERS_HASH = 'c76146de99bb02f6415203be841dd25a'; // Hash for edge_followed_by
     const FOLLOWING_HASH = '3dec7e2c57367ef3da3d987d89f9dbc8'; // Hash for edge_follow
     const PROFILE_DOC_ID = '7950326061742202';
+    const MIN_COMPLETENESS = 0.9; // fetched list must reach 90% of the reported count
 
     /**
      * Progress Tracker - Updates chrome.storage for popup to read
@@ -278,12 +279,27 @@
                 );
 
             } catch (e) {
+                // Abort: a partial list would produce bogus diffs (fake "lost followers")
                 error(`Loop error in ${type}`, e);
-                await updateProgress('error', allUsers.length, expectedTotal, `Error fetching ${type}`);
-                hasNext = false;
+                const msg = `Error fetching ${type} (${allUsers.length}${expectedTotal ? '/' + expectedTotal : ''}). Data not saved.`;
+                await updateProgress('error', allUsers.length, expectedTotal, msg);
+                throw new Error(msg);
             }
         }
         return allUsers;
+    }
+
+    /**
+     * Reject lists that are far smaller than the count Instagram reports.
+     * Skipped when the expected total is unknown (0).
+     */
+    async function assertCompleteList(type, fetched, expectedTotal) {
+        if (!expectedTotal) return;
+        if (fetched < expectedTotal * MIN_COMPLETENESS) {
+            const msg = `Incomplete ${type} list: got ${fetched}/${expectedTotal}. Data not saved.`;
+            await updateProgress('error', fetched, expectedTotal, msg);
+            throw new Error(msg);
+        }
     }
 
     /**
@@ -359,11 +375,13 @@
         log("Step 1: Fetching Followers...");
         await updateProgress('followers', 0, userProfile.followerCount, 'Starting followers fetch...');
         const followers = await fetchList(userId, 'followers', userProfile.followerCount);
+        await assertCompleteList('followers', followers.length, userProfile.followerCount);
 
         // Fetch Following
         log("Step 2: Fetching Following...");
         await updateProgress('following', 0, userProfile.followingCount, 'Starting following fetch...');
         const following = await fetchList(userId, 'following', userProfile.followingCount);
+        await assertCompleteList('following', following.length, userProfile.followingCount);
 
         log(`Crawl Complete. Followers: ${followers.length}, Following: ${following.length}`);
 
