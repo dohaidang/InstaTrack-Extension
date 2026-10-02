@@ -15,3 +15,7 @@ build/
 .env.local
 
 .gitignore
+
+# archives
+dist.rar
+*.rar
