@@ -4,15 +4,9 @@ import { useFollowerData } from '../hooks/useFollowerData';
 import Avatar from '../components/Avatar';
 import { useLanguage } from '../hooks/useLanguage';
 import { exportToCsv } from '../utils/exportCsv';
+import type { Follower, StatusType } from '../types';
 
-interface Follower {
-  id: string;
-  username: string;
-  fullName: string;
-  avatarUrl: string;
-}
-
-type TabType = 'Mutual' | 'Lost' | 'New' | 'Not Following Back';
+type TabType = StatusType;
 
 const FollowerStats = () => {
   const navigate = useNavigate();

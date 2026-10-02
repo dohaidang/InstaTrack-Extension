@@ -2,13 +2,11 @@
  * Export data to CSV file
  */
 
-interface ExportData {
-    username: string;
-    fullName: string;
-    avatarUrl: string;
-}
+import type { Follower, StatusType } from '../types';
 
-export type StatusType = 'Mutual' | 'Lost' | 'New' | 'Not Following Back';
+export type { StatusType };
+
+type ExportData = Pick<Follower, 'username' | 'fullName' | 'avatarUrl'>;
 
 export function exportToCsv(data: ExportData[], filename: string, status: StatusType): void {
     // CSV header with Status column

@@ -4,14 +4,7 @@ import Avatar from '../components/Avatar';
 import { useFollowerData } from '../hooks/useFollowerData';
 import { getUsernameHistory, addUsernameToHistory, clearUsernameHistory } from '../utils/usernameHistory';
 import { useLanguage } from '../hooks/useLanguage';
-
-interface ScanProgress {
-  phase: 'idle' | 'resolving' | 'followers' | 'following' | 'processing' | 'done' | 'error';
-  current: number;
-  total: number;
-  message: string;
-  timestamp: number;
-}
+import type { ScanProgress } from '../types';
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 const Dashboard = () => {
@@ -32,8 +25,6 @@ const Dashboard = () => {
       const result = await chrome.storage.local.get(['scanProgress', 'targetUsername']);
       if (result.targetUsername) {
         setTargetUsername(result.targetUsername as string);
-      } else {
-        setTargetUsername('dangdohaii');
       }
       if (result.scanProgress) {
         const progress = result.scanProgress as ScanProgress;
@@ -51,7 +42,7 @@ const Dashboard = () => {
         updateUIFromProgress(progress);
       }
       if (areaName === 'local' && changes.targetUsername) {
-        setTargetUsername((changes.targetUsername.newValue as string) || 'dangdohaii');
+        setTargetUsername((changes.targetUsername.newValue as string) || '');
       }
     };
     chrome.storage.onChanged.addListener(listener);
@@ -119,54 +110,24 @@ const Dashboard = () => {
     return Math.min(100, Math.round((scanProgress.current / scanProgress.total) * 100));
   };
 
-  const getProgressDisplay = (): string => {
-    if (!scanProgress || !isScanning) return `${stats.totalFollowers || 1197}`;
-    return `${scanProgress.current}`;
-  };
-
-  const getPhaseLabel = (): string => {
-    if (!scanProgress || !isScanning) return t('followers').toLowerCase();
-    switch (scanProgress.phase) {
-      case 'resolving':   return 'resolving...';
-      case 'followers':   return t('followers').toLowerCase();
-      case 'following':   return t('following').toLowerCase();
-      case 'processing':  return 'processing...';
-      case 'done':        return 'complete!';
-      case 'error':       return 'error';
-      default:            return t('followers').toLowerCase();
-    }
-  };
+  // No scan has completed yet -> show empty states instead of numbers
+  const hasData = stats.lastUpdated !== null;
 
   // Follower quality donut chart data
-  const mutualCount = stats.mutualCount || 108;
-  const notFollowingCount = stats.notFollowingBackCount || 104;
+  const mutualCount = stats.mutualCount;
+  const notFollowingCount = stats.notFollowingBackCount;
   const totalChart = mutualCount + notFollowingCount;
-  const mutualPercent = totalChart > 0 ? Math.round((mutualCount / totalChart) * 100) : 51;
-  const notFollowingPercent = 100 - mutualPercent;
+  const mutualPercent = totalChart > 0 ? Math.round((mutualCount / totalChart) * 100) : 0;
+  const notFollowingPercent = totalChart > 0 ? 100 - mutualPercent : 0;
 
   const circumference = 226.2; // 2 * Math.PI * 36
   const mutualStrokeDash = (mutualPercent / 100) * circumference;
 
-  // Compile real activity or mock activity
-  const activities = [];
-  if (stats.newFollowersList && stats.newFollowersList.length > 0) {
-    stats.newFollowersList.slice(0, 2).forEach(u => {
-      activities.push({ username: u.username, type: 'followed', label: 'followed you', time: 'Recently' });
-    });
-  }
-  if (stats.lostFollowersList && stats.lostFollowersList.length > 0) {
-    stats.lostFollowersList.slice(0, 2).forEach(u => {
-      activities.push({ username: u.username, type: 'unfollowed', label: 'unfollowed you', time: 'Recently' });
-    });
-  }
-  if (activities.length === 0) {
-    activities.push(
-      { username: 'user.aesthetic', type: 'followed', label: 'followed you', time: '2m ago' },
-      { username: 'vibes.with.me', type: 'followed', label: 'followed you', time: '1h ago' },
-      { username: 'minimal.world', type: 'unfollowed', label: 'unfollowed you', time: '3h ago' },
-      { username: 'design.dailyy', type: 'unfollowed', label: 'unfollowed you', time: '1d ago' }
-    );
-  }
+  // Recent activity from the latest diff
+  const activities: { username: string; avatarUrl?: string; type: 'followed' | 'unfollowed'; label: string }[] = [
+    ...stats.newFollowersList.slice(0, 2).map(u => ({ username: u.username, avatarUrl: u.avatarUrl, type: 'followed' as const, label: 'followed you' })),
+    ...stats.lostFollowersList.slice(0, 2).map(u => ({ username: u.username, avatarUrl: u.avatarUrl, type: 'unfollowed' as const, label: 'unfollowed you' })),
+  ];
 
   return (
     <div className="flex flex-col gap-4 px-4 pt-4 pb-8 transition-colors duration-200">
@@ -196,20 +157,20 @@ const Dashboard = () => {
             <div className="rounded-full bg-lux-bg p-[2px]">
               <Avatar
                 src={stats.avatarBase64 || stats.avatarUrl || ''}
-                username={stats.username || targetUsername || 'dangdohaii'}
+                username={stats.username || targetUsername || '?'}
                 size="md"
               />
             </div>
           </div>
           <div className="flex flex-col min-w-0 flex-1">
             <h2 className="text-lux-text-primary text-base font-extrabold tracking-tight truncate leading-tight">
-              @{stats.username || targetUsername || 'dangdohaii'}
+              {stats.username || targetUsername ? `@${stats.username || targetUsername}` : 'No account yet'}
             </h2>
             <p className="text-[10px] text-lux-text-secondary font-medium leading-none mt-1">
               Instagram Intelligence Dashboard
             </p>
             <p className="text-[9px] text-lux-text-secondary/60 mt-1.5 font-semibold">
-              Last Sync: {stats.lastUpdated || '29 May 2026 • 14:25'}
+              Last Sync: {stats.lastUpdated || 'Never'}
             </p>
           </div>
         </div>
@@ -219,13 +180,13 @@ const Dashboard = () => {
           <div className="flex flex-col">
             <span className="text-[9px] uppercase tracking-wider text-lux-text-secondary font-bold">Followers</span>
             <span className="text-lg font-black text-lux-text-primary tracking-tight">
-              {(stats.totalFollowers || 1197).toLocaleString()}
+              {hasData ? stats.totalFollowers.toLocaleString() : '—'}
             </span>
           </div>
           <div className="flex flex-col">
             <span className="text-[9px] uppercase tracking-wider text-lux-text-secondary font-bold">Following</span>
             <span className="text-lg font-black text-lux-text-primary tracking-tight">
-              {(stats.totalFollowing || 212).toLocaleString()}
+              {hasData ? stats.totalFollowing.toLocaleString() : '—'}
             </span>
           </div>
         </div>
@@ -239,7 +200,7 @@ const Dashboard = () => {
             <input
               ref={inputRef}
               type="text"
-              placeholder="Username (e.g. dangdohaii)"
+              placeholder="Instagram username"
               className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl py-2.5 pl-9 pr-4 text-lux-text-primary font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all placeholder-lux-text-secondary/40"
               value={targetUsername}
               onChange={(e) => setTargetUsername(e.target.value)}
@@ -309,7 +270,7 @@ const Dashboard = () => {
           <div className="flex justify-between items-center text-[10px] text-lux-text-secondary font-medium">
             <span>{statusText || 'Scraping accounts...'}</span>
             <span>
-              {scanProgress ? `${scanProgress.current} / ${scanProgress.total || stats.totalFollowers || 1197}` : `516 / 1197`} Scanned
+              {scanProgress ? `${scanProgress.current}${scanProgress.total ? ` / ${scanProgress.total}` : ''} Scanned` : ''}
             </span>
           </div>
 
@@ -321,10 +282,6 @@ const Dashboard = () => {
             />
           </div>
 
-          <div className="flex justify-between items-center text-[9px] text-lux-text-secondary/60 mt-0.5">
-            <span>AI-Powered Selector Engine</span>
-            <span>Est. remaining: ~45s</span>
-          </div>
         </section>
       )}
 
@@ -339,11 +296,13 @@ const Dashboard = () => {
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">+{stats.newFollowersCount || 1}</h4>
-            <span className="text-[8px] text-[#22C55E] font-bold flex items-center gap-0.5 mt-1">
-              <span className="size-1 bg-[#22C55E] rounded-full inline-block animate-ping" />
-              Gain Detected
-            </span>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? `+${stats.newFollowersCount}` : '—'}</h4>
+            {hasData && stats.newFollowersCount > 0 && (
+              <span className="text-[8px] text-[#22C55E] font-bold flex items-center gap-0.5 mt-1">
+                <span className="size-1 bg-[#22C55E] rounded-full inline-block animate-ping" />
+                Gain Detected
+              </span>
+            )}
           </div>
         </Link>
 
@@ -356,11 +315,13 @@ const Dashboard = () => {
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">{stats.lostFollowersCount || 0}</h4>
-            <span className="text-[8px] text-[#EF4444] font-bold flex items-center gap-0.5 mt-1">
-              <span className="size-1 bg-[#EF4444] rounded-full inline-block" />
-              Alert Active
-            </span>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? stats.lostFollowersCount : '—'}</h4>
+            {hasData && stats.lostFollowersCount > 0 && (
+              <span className="text-[8px] text-[#EF4444] font-bold flex items-center gap-0.5 mt-1">
+                <span className="size-1 bg-[#EF4444] rounded-full inline-block" />
+                Alert Active
+              </span>
+            )}
           </div>
         </Link>
 
@@ -373,10 +334,12 @@ const Dashboard = () => {
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">{stats.notFollowingBackCount || 104}</h4>
-            <span className="text-[8px] text-[#F59E0B] font-bold flex items-center gap-0.5 mt-1">
-              <span className="px-1.5 py-0.5 bg-[#F59E0B]/10 rounded-full">Warning</span>
-            </span>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? stats.notFollowingBackCount : '—'}</h4>
+            {hasData && stats.notFollowingBackCount > 0 && (
+              <span className="text-[8px] text-[#F59E0B] font-bold flex items-center gap-0.5 mt-1">
+                <span className="px-1.5 py-0.5 bg-[#F59E0B]/10 rounded-full">Warning</span>
+              </span>
+            )}
           </div>
         </Link>
 
@@ -389,10 +352,12 @@ const Dashboard = () => {
             </div>
           </div>
           <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">{stats.mutualCount || 108}</h4>
-            <span className="text-[8px] text-[#6366F1] font-bold flex items-center gap-0.5 mt-1">
-              <span className="px-1.5 py-0.5 bg-[#6366F1]/10 rounded-full">Connected</span>
-            </span>
+            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? stats.mutualCount : '—'}</h4>
+            {hasData && stats.mutualCount > 0 && (
+              <span className="text-[8px] text-[#6366F1] font-bold flex items-center gap-0.5 mt-1">
+                <span className="px-1.5 py-0.5 bg-[#6366F1]/10 rounded-full">Connected</span>
+              </span>
+            )}
           </div>
         </Link>
       </section>
@@ -466,10 +431,16 @@ const Dashboard = () => {
       <section className="space-y-3">
         <h3 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider">Recent Activity</h3>
         <div className="flex flex-col gap-2">
+          {activities.length === 0 && (
+            <div className="glass-card rounded-xl p-4 text-center text-[10px] text-lux-text-secondary font-semibold">
+              {hasData ? 'No changes since the previous scan.' : 'No activity yet. Run a scan to get started.'}
+            </div>
+          )}
           {activities.map((act, i) => (
             <div key={i} className="glass-card rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2.5 min-w-0">
                 <Avatar
+                  src={act.avatarUrl}
                   username={act.username}
                   size="sm"
                   hasStory={act.type === 'followed'}
@@ -480,7 +451,6 @@ const Dashboard = () => {
                   <span className="text-[9px] text-lux-text-secondary">{act.label}</span>
                 </div>
               </div>
-              <span className="text-[9px] text-lux-text-secondary/50 shrink-0 font-semibold">{act.time}</span>
             </div>
           ))}
         </div>
@@ -497,15 +467,9 @@ const Dashboard = () => {
           <div className="flex flex-col">
             <h4 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider">Account Recommendations</h4>
             <p className="text-xs text-lux-text-secondary mt-1">
-              {notFollowingCount} accounts don't follow you back.
+              {hasData ? `${notFollowingCount} accounts don't follow you back.` : 'Run a scan to see recommendations.'}
             </p>
           </div>
-        </div>
-
-        <div className="bg-white/[0.02] rounded-xl p-3 border border-white/[0.04]">
-          <p className="text-[10px] text-amber-400 font-semibold leading-relaxed">
-            AI Insight: "Improving your follower quality could increase engagement by 12%."
-          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mt-1">

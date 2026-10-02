@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../hooks/useLanguage';
-
-interface SnapshotEntry {
-  date: string;
-  followerCount: number;
-  followingCount: number;
-  newCount: number;
-  lostCount: number;
-}
+import type { SnapshotEntry } from '../types';
 
 const ScanHistory = () => {
   const navigate = useNavigate();

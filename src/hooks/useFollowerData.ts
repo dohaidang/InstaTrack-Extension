@@ -1,45 +1,5 @@
 import { useState, useEffect } from 'react';
-
-interface Follower {
-    id: string;
-    username: string;
-    fullName: string;
-    avatarUrl: string;
-}
-
-interface Snapshot {
-    [date: string]: Follower[];
-}
-
-interface OwnerProfile {
-    id: string;
-    username: string;
-    fullName: string;
-    avatarUrl: string;
-    followingCount: number;
-    followerCount: number;
-}
-
-interface Stats {
-    totalFollowers: number;
-    totalFollowing: number;
-    newFollowersCount: number;
-    lostFollowersCount: number;
-    mutualCount: number;
-    notFollowingBackCount: number;
-
-    newFollowersList: Follower[];
-    lostFollowersList: Follower[];
-    mutualList: Follower[];
-    notFollowingBackList: Follower[];
-
-    lastUpdated: string | null;
-    username: string | null;
-    avatarUrl: string | null;
-    avatarBase64: string | null;
-    followingCount: number | null;
-    followerCount: number | null;
-}
+import type { OwnerProfile, Stats } from '../types';
 
 export const useFollowerData = () => {
     const [stats, setStats] = useState<Stats>({

@@ -37,7 +37,8 @@ chrome.storage.local.get(['startOnLoad', 'targetUsername'], (result) => {
         // Wait a bit for page load then run
         setTimeout(() => {
             if (window.IG_API) {
-                window.IG_API.runCrawler(result.targetUsername);
+                window.IG_API.runCrawler(result.targetUsername)
+                    .catch(err => log("Crawl error:", err));
             }
         }, 3000);
     }

@@ -1,6 +1,6 @@
 /**
  * Content Script Utilities
- * Provides helper functions for delays, logging, and synthetic events
+ * Provides helper functions for delays, logging, and cookies
  */
 (function () {
     window.IG_UTILS = window.IG_UTILS || {};
@@ -38,54 +38,12 @@
         console.error(`%c${_logPrefix} ERROR: ${msg}`, 'color: red; font-weight: bold;', ...args);
     }
 
-    // --- 3. DOM Helpers ---
-
-    /**
-     * Safely query selector inside a container or document
-     */
-    function q(selector, context = document) {
-        return context.querySelector(selector);
-    }
-
-    function qa(selector, context = document) {
-        return Array.from(context.querySelectorAll(selector));
-    }
-
-    /**
-     * Wait for an element to appear in DOM
-     * @param {string} selector 
-     * @param {number} timeoutMs 
-     */
-    function waitForElement(selector, timeoutMs = 10000) {
-        return new Promise((resolve, reject) => {
-            if (q(selector)) return resolve(q(selector));
-
-            const observer = new MutationObserver((mutations) => {
-                const el = q(selector);
-                if (el) {
-                    observer.disconnect();
-                    resolve(el);
-                }
-            });
-
-            observer.observe(document.body, { childList: true, subtree: true });
-
-            setTimeout(() => {
-                observer.disconnect();
-                reject(new Error(`Timeout waiting for ${selector}`));
-            }, timeoutMs);
-        });
-    }
-
     // Export to global scope
     window.IG_UTILS = {
         delay,
         randomDelay,
         log,
         error,
-        q,
-        qa,
-        waitForElement,
         getCookie: (name) => {
             const value = `; ${document.cookie}`;
             const parts = value.split(`; ${name}=`);
