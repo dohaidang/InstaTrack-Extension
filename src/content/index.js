@@ -26,20 +26,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
+/**
+ * Run one scan, then hand over to the "scan all" queue (if one is running)
+ * so it can record the result and open the next account.
+ */
+async function runAndAdvance(username, inQueue) {
+    let outcome = { ok: true };
+    try {
+        await window.IG_API.runCrawler(username, { keepActive: inQueue });
+        log("Crawl finished.");
+    } catch (err) {
+        log("Crawl error:", err);
+        outcome = { ok: false, message: err?.message || 'Scan failed.' };
+    }
+    if (inQueue && window.IG_QUEUE) {
+        await window.IG_QUEUE.advanceQueue(username, outcome)
+            .catch(err => log("Queue error:", err));
+    }
+}
+
 // Auto-Start Check (For Flow: Popup -> Open Tab -> Auto Start)
-chrome.storage.local.get(['startOnLoad', 'targetUsername'], (result) => {
+chrome.storage.local.get(['startOnLoad', 'targetUsername', 'scanQueue'], (result) => {
     if (result.startOnLoad && result.targetUsername) {
         log(`Auto-starting crawl for ${result.targetUsername}...`);
 
         // Reset flag immediately to prevent loop
         chrome.storage.local.set({ startOnLoad: false });
+        const inQueue = Boolean(result.scanQueue && result.scanQueue.active);
 
         // Wait a bit for page load then run
         setTimeout(() => {
-            if (window.IG_API) {
-                window.IG_API.runCrawler(result.targetUsername)
-                    .catch(err => log("Crawl error:", err));
-            }
+            if (window.IG_API) runAndAdvance(result.targetUsername, inQueue);
         }, 3000);
     }
 });

@@ -1,11 +1,10 @@
-import React from 'react';
 import { HashRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import FollowerStats from './pages/FollowerStats';
 import ScanHistory from './pages/ScanHistory';
 import Settings from './pages/Settings';
-import DetailedSettings from './pages/DetailedSettings';
-import { useLanguage } from './hooks/useLanguage';
+import { LanguageProvider, useLanguage } from './hooks/useLanguage';
+import { Icon, type IconName } from './components/Icon';
 
 // ── Bottom Navigation ─────────────────────────────────────────────────────────
 const BottomNav = () => {
@@ -15,41 +14,27 @@ const BottomNav = () => {
 
   if (location.pathname === '/settings/detailed') return null;
 
-  const navItems = [
+  const navItems: { to: string; icon: IconName; label: string }[] = [
     { to: '/',         icon: 'dashboard',  label: t('dashboard') },
-    { to: '/stats',    icon: 'monitoring', label: t('accounts') },
+    { to: '/stats',    icon: 'accounts',   label: t('accounts') },
     { to: '/history',  icon: 'history',    label: t('history') },
     { to: '/settings', icon: 'settings',   label: t('settings') },
   ];
 
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[90%] z-50">
-      <nav className="flex justify-around items-center px-1 py-1.5 glass-dock rounded-full">
+    <div className="bottom-nav-wrap">
+      <nav className="bottom-nav" aria-label="Primary navigation">
         {navItems.map(({ to, icon, label }) => {
           const active = isActive(to);
           return (
             <Link
               key={to}
               to={to}
-              className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-full transition-all duration-300 cursor-pointer flex-1
-                ${active
-                  ? 'text-lux-text-primary'
-                  : 'text-lux-text-secondary hover:text-lux-text-primary'
-                }`}
+              className={`bottom-nav__item ${active ? 'is-active' : ''}`}
+              aria-current={active ? 'page' : undefined}
             >
-              {active && (
-                <span className="absolute inset-0 bg-lux-text-primary/[0.08] rounded-full border border-lux-text-primary/[0.05] z-0" />
-              )}
-              <span
-                className="material-symbols-outlined text-[20px] relative z-10"
-                style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
-              >
-                {icon}
-              </span>
-              <span className="text-[8px] font-bold uppercase tracking-wider relative z-10">{label}</span>
-              {active && (
-                <span className="absolute -bottom-0.5 w-1 h-1 bg-[#E1306C] rounded-full shadow-[0_0_8px_#E1306C] z-10" />
-              )}
+              <Icon name={icon} size={18} />
+              <span>{label}</span>
             </Link>
           );
         })}
@@ -61,8 +46,8 @@ const BottomNav = () => {
 // ── Layout ────────────────────────────────────────────────────────────────────
 const Layout = ({ children }: React.PropsWithChildren) => {
   return (
-    <div className="w-[360px] h-[600px] bg-lux-bg text-lux-text-primary flex flex-col overflow-hidden relative transition-colors duration-200">
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 no-scrollbar">
+    <div className="extension-shell">
+      <main className="extension-main">
         {children}
       </main>
       <BottomNav />
@@ -73,16 +58,18 @@ const Layout = ({ children }: React.PropsWithChildren) => {
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   return (
-    <HashRouter>
-      <Layout>
-        <Routes>
-          <Route path="/"                element={<Dashboard />} />
-          <Route path="/stats"           element={<FollowerStats />} />
-          <Route path="/history"         element={<ScanHistory />} />
-          <Route path="/settings"        element={<Settings />} />
-          <Route path="/settings/detailed" element={<DetailedSettings />} />
-        </Routes>
-      </Layout>
-    </HashRouter>
+    <LanguageProvider>
+      <HashRouter>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/stats" element={<FollowerStats />} />
+            <Route path="/history" element={<ScanHistory />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/settings/detailed" element={<Settings />} />
+          </Routes>
+        </Layout>
+      </HashRouter>
+    </LanguageProvider>
   );
 }

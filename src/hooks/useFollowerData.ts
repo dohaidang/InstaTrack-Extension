@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { OwnerProfile, Stats } from '../types';
+import type { Follower, Stats } from '../types';
+import { getActiveAccount, getTrackerState, TRACKER_STATE_KEY } from '../utils/trackerStorage';
 
 export const useFollowerData = () => {
     const [stats, setStats] = useState<Stats>({
@@ -27,38 +28,32 @@ export const useFollowerData = () => {
 
     const fetchStats = async () => {
         try {
-            const result = await chrome.storage.local.get(['snapshots', 'diffs', 'lastSnapshotDate', 'ownerProfile', 'ownerAvatarBase64']);
-            const lastDate = result.lastSnapshotDate as string;
-            const diffs = result.diffs || {};
-            const snapshots = result.snapshots || {};
-            const ownerProfile = result.ownerProfile as OwnerProfile;
-
-            let diffData = null;
-            let snapshotData = null;
-
-            if (lastDate) {
-                diffData = diffs[lastDate];
-                snapshotData = snapshots[lastDate];
-            }
+            const state = await getTrackerState();
+            const account = getActiveAccount(state);
+            const scan = account?.latestScan;
+            const ownerProfile = account?.profile;
+            const resolve = (ids: string[] = []): Follower[] => ids
+                .map((id) => account?.people[id])
+                .filter((person): person is Follower => Boolean(person));
 
             setStats({
-                totalFollowers: snapshotData?.reported?.followers || snapshotData?.followers?.length || 0,
-                totalFollowing: snapshotData?.reported?.following || snapshotData?.following?.length || 0,
+                totalFollowers: scan?.counts.followers || 0,
+                totalFollowing: scan?.counts.following || 0,
 
-                newFollowersCount: diffData?.counts?.new || diffData?.newFollowers?.length || 0,
-                lostFollowersCount: diffData?.counts?.lost || diffData?.lostFollowers?.length || 0,
-                mutualCount: diffData?.counts?.mutual || diffData?.mutual?.length || 0,
-                notFollowingBackCount: diffData?.counts?.notFollowingBack || diffData?.notFollowingBack?.length || 0,
+                newFollowersCount: scan?.counts.new || 0,
+                lostFollowersCount: scan?.counts.lost || 0,
+                mutualCount: scan?.counts.mutual || 0,
+                notFollowingBackCount: scan?.counts.notFollowingBack || 0,
 
-                newFollowersList: diffData?.newFollowers || [],
-                lostFollowersList: diffData?.lostFollowers || [],
-                mutualList: diffData?.mutual || [],
-                notFollowingBackList: diffData?.notFollowingBack || [],
+                newFollowersList: resolve(scan?.diffs.new),
+                lostFollowersList: resolve(scan?.diffs.lost),
+                mutualList: resolve(scan?.diffs.mutual),
+                notFollowingBackList: resolve(scan?.diffs.notFollowingBack),
 
-                lastUpdated: lastDate || null,
+                lastUpdated: scan?.completedAt || null,
                 username: ownerProfile?.username || null,
                 avatarUrl: ownerProfile?.avatarUrl || null,
-                avatarBase64: (result.ownerAvatarBase64 as string) || null,
+                avatarBase64: ownerProfile?.avatarBase64 || null,
                 followingCount: ownerProfile?.followingCount || 0,
                 followerCount: ownerProfile?.followerCount || 0
             });
@@ -73,7 +68,7 @@ export const useFollowerData = () => {
     useEffect(() => {
         fetchStats();
         const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-            if (areaName === 'local' && (changes.snapshots || changes.diffs || changes.lastSnapshotDate || changes.ownerProfile || changes.ownerAvatarBase64)) {
+            if (areaName === 'local' && (changes[TRACKER_STATE_KEY] || changes.snapshots || changes.diffs)) {
                 fetchStats();
             }
         };

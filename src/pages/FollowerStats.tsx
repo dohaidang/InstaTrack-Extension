@@ -1,226 +1,198 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useFollowerData } from '../hooks/useFollowerData';
 import Avatar from '../components/Avatar';
+import { Icon } from '../components/Icon';
+import { EmptyState, PageHeader, StatusBadge } from '../components/LedgerUI';
+import { useFollowerData } from '../hooks/useFollowerData';
 import { useLanguage } from '../hooks/useLanguage';
-import { exportToCsv } from '../utils/exportCsv';
 import type { Follower, StatusType } from '../types';
+import { exportToCsv } from '../utils/exportCsv';
 
 type TabType = StatusType;
+const PAGE_SIZE = 80;
+
+const tabFromParam = (value: string | null): TabType => {
+  if (value === 'lost') return 'Lost';
+  if (value === 'new') return 'New';
+  if (value === 'notfollowing') return 'Not Following Back';
+  return 'Mutual';
+};
+
+const paramFromTab = (tab: TabType) => ({
+  Mutual: 'mutual',
+  Lost: 'lost',
+  New: 'new',
+  'Not Following Back': 'notfollowing',
+}[tab]);
 
 const FollowerStats = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [params] = useSearchParams();
   const { stats, loading } = useFollowerData();
-  const { t } = useLanguage();
-  
-  // Get initial tab from URL query param
-  const getInitialTab = (): TabType => {
-    const tabParam = searchParams.get('tab');
-    switch (tabParam) {
-      case 'lost': return 'Lost';
-      case 'new': return 'New';
-      case 'notfollowing': return 'Not Following Back';
-      default: return 'Mutual';
-    }
-  };
-  
-  const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
-  const [searchQuery, setSearchQuery] = useState('');
+  const { language, t } = useLanguage();
+  const [activeTab, setActiveTab] = useState<TabType>(() => tabFromParam(params.get('tab')));
+  const [query, setQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
-  // Update active tab when URL changes
   useEffect(() => {
-    setActiveTab(getInitialTab());
-  }, [searchParams]);
+    setActiveTab(tabFromParam(params.get('tab')));
+    setVisibleCount(PAGE_SIZE);
+  }, [params]);
 
   const categories: TabType[] = ['Mutual', 'Lost', 'New', 'Not Following Back'];
-
-  // Get current list based on active tab
-  const getCurrentList = (): Follower[] => {
-    switch (activeTab) {
-      case 'Mutual': return stats.mutualList || [];
-      case 'Lost': return stats.lostFollowersList || [];
-      case 'New': return stats.newFollowersList || [];
-      case 'Not Following Back': return stats.notFollowingBackList || [];
-      default: return [];
-    }
+  const listMap: Record<TabType, Follower[]> = {
+    Mutual: stats.mutualList,
+    Lost: stats.lostFollowersList,
+    New: stats.newFollowersList,
+    'Not Following Back': stats.notFollowingBackList,
+  };
+  const countMap: Record<TabType, number> = {
+    Mutual: stats.mutualCount,
+    Lost: stats.lostFollowersCount,
+    New: stats.newFollowersCount,
+    'Not Following Back': stats.notFollowingBackCount,
+  };
+  const labelMap: Record<TabType, string> = {
+    Mutual: t('mutual'),
+    Lost: t('lost'),
+    New: t('new'),
+    'Not Following Back': t('notFollowing'),
   };
 
-  const currentList = getCurrentList();
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return listMap[activeTab];
+    return listMap[activeTab].filter((person) =>
+      person.username.toLowerCase().includes(needle)
+      || person.fullName?.toLowerCase().includes(needle));
+  }, [activeTab, query, stats]);
 
-  // Filter list by search query
-  const filteredList = currentList.filter(user =>
-    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (user.fullName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false)
-  );
-
-  // Get tab count for badge
-  const getTabCount = (tab: string): number => {
-    switch (tab) {
-      case 'Mutual': return stats.mutualCount || 0;
-      case 'Lost': return stats.lostFollowersCount || 0;
-      case 'New': return stats.newFollowersCount || 0;
-      case 'Not Following Back': return stats.notFollowingBackCount || 0;
-      default: return 0;
-    }
-  };
-
-  const getTabLabel = (tab: string) => {
-    switch (tab) {
-      case 'Mutual': return t('mutual');
-      case 'Lost': return t('lost');
-      case 'New': return t('new');
-      case 'Not Following Back': return t('notFollowing');
-      default: return tab;
-    }
-  };
-
-  // Export CSV handler
-  const handleExport = () => {
-    if (filteredList.length === 0) return;
-    const filename = `instagram_${activeTab.toLowerCase().replace(/ /g, '_')}_${new Date().toISOString().slice(0, 10)}`;
-    exportToCsv(filteredList, filename, activeTab);
+  const visible = filtered.slice(0, visibleCount);
+  const changeTab = (tab: TabType) => {
+    setActiveTab(tab);
+    setQuery('');
+    setVisibleCount(PAGE_SIZE);
+    navigate({ pathname: '/stats', search: `?tab=${paramFromTab(tab)}` }, { replace: true });
   };
 
   return (
-    <div className="pb-24 pt-4 min-h-screen bg-lux-bg text-lux-text-primary">
-      {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-50 bg-lux-bg/80 backdrop-blur-md border-b border-lux-glass-border -mt-4 mb-4">
-        <div className="flex items-center p-4 justify-between max-w-md mx-auto">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors text-lux-text-primary"
+    <div className="ledger-page">
+      <PageHeader
+        eyebrow="Account index"
+        title={t('followerStats')}
+        action={(
+          <button
+            className="icon-button"
+            disabled={filtered.length === 0}
+            onClick={() => exportToCsv(
+              filtered,
+              `instagram_${paramFromTab(activeTab)}_${new Date().toISOString().slice(0, 10)}`,
+              activeTab,
+            )}
+            aria-label={t('exportCsv')}
           >
-            <span className="material-symbols-outlined text-xl">arrow_back_ios_new</span>
+            <Icon name="download" />
           </button>
-          <h2 className="text-lux-text-primary text-base font-extrabold leading-tight tracking-tight flex-1 text-center">{t('followerStats')}</h2>
-          <button 
-            onClick={handleExport}
-            disabled={filteredList.length === 0}
-            className="flex size-10 shrink-0 items-center justify-center cursor-pointer hover:bg-lux-text-primary/5 border border-transparent hover:border-lux-text-primary/10 rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-lux-text-primary"
-            title={t('exportCsv')}
+        )}
+      />
+
+      <div className="category-strip" role="tablist" aria-label="Account category">
+        {categories.map((category) => (
+          <button
+            key={category}
+            role="tab"
+            aria-selected={activeTab === category}
+            className={activeTab === category ? 'is-active' : ''}
+            onClick={() => changeTab(category)}
           >
-            <span className="material-symbols-outlined text-xl">download</span>
+            <span>{labelMap[category]}</span>
+            <strong>{countMap[category].toLocaleString()}</strong>
           </button>
-        </div>
+        ))}
       </div>
 
-      <div className="px-4">
-        {/* Chips/Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-4 no-scrollbar">
-          {categories.map((cat) => {
-            const active = activeTab === cat;
-            const count = getTabCount(cat);
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveTab(cat)}
-                className={`px-4 py-2.5 rounded-full whitespace-nowrap text-xs font-bold transition-all duration-300 ${
-                  active
-                    ? 'bg-brand-gradient text-white shadow-md shadow-primary/25'
-                    : 'bg-lux-text-primary/[0.04] border border-lux-glass-border text-lux-text-secondary hover:text-lux-text-primary hover:bg-lux-text-primary/[0.08]'
-                }`}
-              >
-                {getTabLabel(cat)}
-                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] font-black ${
-                  active ? 'bg-white/20 text-white' : 'bg-lux-text-primary/5 text-lux-text-secondary/60'
-                }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search Input */}
-        <div className="relative mb-4">
-          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-lux-text-secondary/40 text-lg">search</span>
+      <div className="list-toolbar">
+        <label className="search-field">
+          <Icon name="search" size={17} />
           <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setVisibleCount(PAGE_SIZE);
+            }}
             placeholder={t('searchPlaceholder')}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-lux-text-primary/[0.04] border border-lux-glass-border text-lux-text-primary placeholder-lux-text-secondary/30 focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all text-xs font-semibold"
           />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-lux-text-secondary hover:text-lux-text-primary"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
+          {query && (
+            <button onClick={() => setQuery('')} aria-label="Clear search">
+              <Icon name="close" size={15} />
             </button>
           )}
-        </div>
+        </label>
+        <span>{filtered.length.toLocaleString()} {language === 'vi' ? 'tài khoản' : 'accounts'}</span>
+      </div>
 
-        {/* List */}
-        {loading ? (
-             <div className="flex flex-col items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-7 w-7 border-2 border-primary border-t-transparent mb-3"></div>
-                <p className="text-lux-text-secondary text-xs font-semibold">{t('scanningBtn')}</p>
-             </div>
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {filteredList.map((user) => (
-               <UserCard 
-                key={user.id || user.username}
-                username={user.username} 
-                name={user.fullName || user.username} 
-                img={user.avatarUrl} 
-                type={activeTab === 'Lost' ? 'Lost' : activeTab === 'Not Following Back' ? 'NotFollowing' : 'Following'} 
+      {loading ? (
+        <div className="record-loading"><span />{language === 'vi' ? 'Đang đọc bản ghi…' : 'Reading ledger…'}</div>
+      ) : visible.length === 0 ? (
+        <EmptyState
+          icon={query ? 'search' : 'accounts'}
+          title={query ? t('noResults') : t('noDataYet')}
+          body={language === 'vi'
+            ? 'Danh sách này sẽ xuất hiện sau một lần quét hoàn chỉnh.'
+            : 'This index appears after a complete verified scan.'}
+        />
+      ) : (
+        <>
+          <div className="account-list">
+            {visible.map((person, index) => (
+              <AccountRow
+                key={person.id || person.username}
+                person={person}
+                index={index + 1}
+                status={activeTab}
+                statusLabel={labelMap[activeTab]}
               />
             ))}
-            {filteredList.length === 0 && (
-                <div className="text-center py-16 glass-card rounded-2xl border border-lux-glass-border p-6">
-                    <div className="bg-lux-text-primary/5 size-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <span className="material-symbols-outlined text-2xl text-lux-text-secondary/40">{searchQuery ? 'search_off' : 'inbox'}</span>
-                    </div>
-                    <p className="text-lux-text-secondary text-xs font-semibold">{searchQuery ? t('noResults') : t('noDataYet')}</p>
-                </div>
-            )}
           </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const UserCard = ({ username, name, img, type }: { username: string, name: string, img: string, type: 'Lost' | 'Following' | 'NotFollowing' }) => {
-  const { t } = useLanguage();
-  
-  const handleAction = () => {
-    window.open(`https://www.instagram.com/${username}/`, '_blank');
-  };
-
-  return (
-    <div className="flex items-center gap-3 bg-lux-text-primary/[0.04] border border-lux-glass-border hover:border-lux-text-primary/[0.12] px-3.5 min-h-[64px] py-2.5 justify-between rounded-xl transition-all duration-300">
-      <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0" onClick={handleAction}>
-        <div className="relative shrink-0">
-          <Avatar src={img || ''} username={username} size="sm" hasStory={type === 'Lost'} />
-          {type === 'Lost' && (
-             <div className="absolute -bottom-1 -right-1 bg-[#EF4444] rounded-full p-0.5 border border-lux-bg flex items-center justify-center">
-                <span className="material-symbols-outlined text-white text-[10px] font-bold">person_remove</span>
-             </div>
+          {visible.length < filtered.length && (
+            <button className="secondary-action" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>
+              {language === 'vi' ? 'Tải thêm' : 'Load next'} {Math.min(PAGE_SIZE, filtered.length - visible.length)}
+            </button>
           )}
-        </div>
-        <div className="flex flex-col justify-center min-w-0 flex-1">
-          <p className="text-lux-text-primary text-xs font-extrabold truncate leading-tight">@{username}</p>
-          <p className="text-lux-text-secondary text-[10px] font-medium truncate mt-0.5">{name}</p>
-        </div>
-      </div>
-      <div className="shrink-0">
-        <button 
-          onClick={handleAction}
-          className={`flex min-w-[72px] cursor-pointer items-center justify-center rounded-lg h-8 px-3 text-xs font-bold transition-all duration-200
-            ${type === 'Following' 
-              ? 'border border-lux-text-primary/10 text-lux-text-primary hover:bg-lux-text-primary/5' 
-              : 'bg-brand-gradient text-white shadow-sm shadow-[#E1306C]/10 hover:opacity-90 active:scale-[0.98]'
-            }`}
-        >
-          <span>{t('view')}</span>
-        </button>
-      </div>
+        </>
+      )}
     </div>
   );
 };
+
+const AccountRow = ({
+  person,
+  index,
+  status,
+  statusLabel,
+}: {
+  person: Follower;
+  index: number;
+  status: TabType;
+  statusLabel: string;
+}) => (
+  <a
+    className="account-row"
+    href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+    target="_blank"
+    rel="noreferrer"
+  >
+    <span className="account-row__index">{String(index).padStart(2, '0')}</span>
+    <Avatar src={person.avatarUrl} username={person.username} size="sm" />
+    <span className="account-row__identity">
+      <strong>@{person.username}</strong>
+      <small>{person.fullName || 'Instagram account'}</small>
+    </span>
+    <StatusBadge tone={status === 'Lost' ? 'error' : status === 'New' ? 'verified' : 'quiet'}>
+      {statusLabel}
+    </StatusBadge>
+    <Icon name="external" size={15} />
+  </a>
+);
 
 export default FollowerStats;
