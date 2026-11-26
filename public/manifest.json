@@ -11,11 +11,21 @@
         "*://*.cdninstagram.com/*"
     ],
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; img-src * data: blob: https://*.cdninstagram.com https://*.fbcdn.net;"
+        "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: blob: https://*.cdninstagram.com https://*.fbcdn.net;"
+    },
+    "icons": {
+        "16": "icon-16.png",
+        "32": "icon-32.png",
+        "48": "icon-48.png",
+        "128": "icon-128.png"
     },
     "action": {
         "default_popup": "index.html",
-        "default_title": "Open Tracker"
+        "default_title": "Open Tracker",
+        "default_icon": {
+            "16": "icon-16.png",
+            "32": "icon-32.png"
+        }
     },
     "content_scripts": [
         {
@@ -25,6 +35,7 @@
             "js": [
                 "src/content/modules/utils.js",
                 "src/content/modules/api_scanner.js",
+                "src/content/modules/scan_queue.js",
                 "src/content/index.js"
             ],
             "run_at": "document_idle"

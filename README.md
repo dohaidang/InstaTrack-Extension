@@ -1,44 +1,53 @@
-# Instagram Tracker Extension (v3)
+# Instagram Tracker Extension
 
-A Chrome Extension for tracking Instagram followers, detecting unfollowers, users not following back, and finding mutual friends.
+A Manifest V3 Chrome extension that creates verified, local snapshots of an Instagram account's followers and following lists.
 
-##  Key Features
+## What it does
 
-- **Intuitive Dashboard**: Overview of Followers and Following counts.
-- **Account Classification**:
-  - **Mutual Friends**: Accounts you follow that follow you back.
-  - **Lost Followers**: Users who have unfollowed you.
-  - **New Followers**: Recently gained followers.
-  - **Not Following Back**: Users you follow who don't follow you back.
-- **Auto Scan**: Automatically scans your follower/following lists.
-- **Dark Mode**: Supports automatic or manual dark/light mode.
-- **User History**: Saves history of scanned usernames.
+- Scans followers and following from an authenticated Instagram tab.
+- Shows mutual accounts, new followers, lost followers, and accounts that do not follow back.
+- Keeps the lost-account list attached to each retained scan-history entry.
+- Keeps independent records for multiple Instagram accounts.
+- Stores timestamped scan summaries and exports account lists to CSV.
+- Uses an atomic commit: a failed or incomplete scan cannot replace the last verified record.
+- Keeps all tracking data in `chrome.storage.local`; there is no private application backend.
 
-### Load Extension from Release
+## Install from source
 
-1. Go to the **Releases** page of this repository.  
-2. Download the latest file (e.g., `.zip`).
-3. Extract the file:
-   - Right click → **Extract All...**
-   - You will get a folder named `dist`.
-4. Open Chrome and go to: chrome://extensions/
-5. Enable **Developer mode** (top right corner).
-6. Click **Load unpacked**.
-7. Select the extracted folder.
+```powershell
+npm install
+npm run check
+```
 
-> ⚠️ Make sure you select the folder, not the file.
+Then open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select the generated `dist` directory.
 
-##  Technologies Used
+## Development
 
-- **React** (UI)
-- **TypeScript** (Safety)
-- **Vite** (Build tool)
-- **TailwindCSS** (Styling)
-- **Chrome Extension Manifest V3**
+```powershell
+npm run dev
+npm test
+npm run build
+```
 
-## Notes
-- The extension works best when you are already logged into Instagram in your browser.
-- Data is stored locally (`chrome.storage.local`) on your machine.
+The browser development view installs a small in-memory Chrome API mock. The mock is never used inside the packaged extension.
+
+## Scan integrity
+
+A scan is committed only when both follower and following pagination finish naturally. Because Instagram's profile counters can briefly drift from its list API, a completed list may differ by at most 2% and no more than three accounts; larger gaps, HTTP errors, rate limits, timeouts, or page limits leave the previous verified data unchanged.
+
+## Technical stack
+
+- React 18
+- TypeScript in strict mode
+- Vite
+- Tailwind CSS build pipeline
+- Chrome Extension Manifest V3
+- Local Fraunces and IBM Plex Sans WOFF2 assets
+
+## Limitations
+
+The scanner relies on Instagram web endpoints used from the signed-in browser session. Instagram can change or rate-limit these endpoints. Large accounts take longer because requests are deliberately serialized with delays.
 
 ---
-Powered by **DoHaiDang**
+
+Powered by DoHaiDang

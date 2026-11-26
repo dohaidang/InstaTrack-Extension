@@ -1,491 +1,430 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../components/Avatar';
+import { Icon } from '../components/Icon';
+import { StatusBadge, formatMoment } from '../components/LedgerUI';
 import { useFollowerData } from '../hooks/useFollowerData';
-import { getUsernameHistory, addUsernameToHistory, clearUsernameHistory } from '../utils/usernameHistory';
 import { useLanguage } from '../hooks/useLanguage';
-import type { ScanProgress } from '../types';
+import { useTrackerState } from '../hooks/useTrackerState';
+import type { QueueItemStatus, ScanProgress } from '../types';
+import {
+  queueIsLive,
+  startQueueScan,
+  startSingleScan,
+  stopQueueScan,
+  usernamesByStaleness,
+} from '../utils/scanLauncher';
+import { openInBackgroundTab } from '../utils/openInBackgroundTab';
+import { removeAccount, setActiveAccount } from '../utils/trackerStorage';
+import { addUsernameToHistory, clearUsernameHistory, getUsernameHistory } from '../utils/usernameHistory';
 
-// ── Dashboard ─────────────────────────────────────────────────────────────────
+const activePhases: ScanProgress['phase'][] = ['resolving', 'followers', 'following', 'processing'];
+
+const queueTone: Record<QueueItemStatus, 'verified' | 'warning' | 'error' | 'quiet'> = {
+  pending: 'quiet',
+  running: 'warning',
+  done: 'verified',
+  error: 'error',
+  skipped: 'quiet',
+};
+
 const Dashboard = () => {
-  const { stats, loading } = useFollowerData();
-  const { t } = useLanguage();
-  const [isScanning, setIsScanning] = useState(false);
-  const [statusText, setStatusText] = useState('Ready to scan');
+  const { stats } = useFollowerData();
+  const { state, queue, reload } = useTrackerState();
+  const { language, t } = useLanguage();
   const [targetUsername, setTargetUsername] = useState('');
-  const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [usernameHistory, setUsernameHistory] = useState<string[]>([]);
-  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [progress, setProgress] = useState<ScanProgress | null>(null);
+  const [formError, setFormError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
 
-  // ── listen for scan progress ───────────────────────────────────────────────
+  const isScanning = Boolean(progress && activePhases.includes(progress.phase));
+  const liveQueue = queueIsLive(queue, progress?.timestamp) ? queue : null;
+  // A queue is "busy" even between accounts, while the progress phase is momentarily done/error
+  const isBusy = isScanning || Boolean(liveQueue);
+  const hasData = Boolean(stats.lastUpdated);
+  const trackedAccounts = Object.entries(state?.accounts ?? {});
+  const queueItems = queue && Date.now() - queue.updatedAt < 60 * 60 * 1000 ? queue.items : [];
+  const queueStatusFor = (username: string) =>
+    queueItems.find((item) => item.username.toLowerCase() === username.toLowerCase());
+
   useEffect(() => {
-    const loadInitialProgress = async () => {
-      const result = await chrome.storage.local.get(['scanProgress', 'targetUsername']);
-      if (result.targetUsername) {
-        setTargetUsername(result.targetUsername as string);
-      }
-      if (result.scanProgress) {
-        const progress = result.scanProgress as ScanProgress;
-        if (Date.now() - progress.timestamp < 5 * 60 * 1000) {
-          setScanProgress(progress);
-          updateUIFromProgress(progress);
-        }
-      }
-    };
-    loadInitialProgress();
-    const listener = (changes: { [key: string]: chrome.storage.StorageChange }, areaName: string) => {
-      if (areaName === 'local' && changes.scanProgress) {
-        const progress = changes.scanProgress.newValue as ScanProgress;
-        setScanProgress(progress);
-        updateUIFromProgress(progress);
-      }
-      if (areaName === 'local' && changes.targetUsername) {
-        setTargetUsername((changes.targetUsername.newValue as string) || '');
+    void getUsernameHistory().then(setUsernameHistory);
+    void chrome.storage.local.get(['scanProgress', 'targetUsername']).then((result) => {
+      if (result.targetUsername) setTargetUsername(result.targetUsername as string);
+      const saved = result.scanProgress as ScanProgress | undefined;
+      if (saved && Date.now() - saved.timestamp < 60 * 60 * 1000) setProgress(saved);
+    });
+
+    const listener = (changes: { [key: string]: chrome.storage.StorageChange }, area: string) => {
+      if (area === 'local' && changes.scanProgress) {
+        setProgress(changes.scanProgress.newValue as ScanProgress);
       }
     };
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);
   }, []);
 
-  useEffect(() => { getUsernameHistory().then(setUsernameHistory); }, []);
-
-  // close dropdown on outside click
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
-        inputRef.current && !inputRef.current.contains(e.target as Node)
-      ) setShowHistoryDropdown(false);
+    const close = (event: MouseEvent) => {
+      const node = event.target as Node;
+      if (!inputRef.current?.contains(node) && !historyRef.current?.contains(node)) setShowHistory(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
   }, []);
 
-  const updateUIFromProgress = (progress: ScanProgress) => {
-    if (!progress) return;
-    setStatusText(progress.message);
-    if (progress.phase === 'done') {
-      setIsScanning(false);
-      setStatusText(progress.message);
-    } else if (progress.phase === 'error') {
-      setIsScanning(false);
-      setStatusText(`❌ ${progress.message}`);
-    } else if (progress.phase !== 'idle') {
-      setIsScanning(true);
+  const normalizedUsername = targetUsername.trim().replace(/^@/, '');
+  const usernameIsValid = /^[A-Za-z0-9._]{1,30}$/.test(normalizedUsername);
+
+  const startScan = async () => {
+    if (!usernameIsValid) {
+      setFormError(language === 'vi'
+        ? 'Username chỉ được chứa chữ, số, dấu chấm và gạch dưới.'
+        : 'Use letters, numbers, dots, and underscores only.');
+      inputRef.current?.focus();
+      return;
     }
+
+    setFormError('');
+    setShowHistory(false);
+    const nextHistory = await addUsernameToHistory(normalizedUsername);
+    setUsernameHistory(nextHistory);
+
+    setProgress(await startSingleScan(normalizedUsername));
   };
 
-  const handleStartCrawl = async () => {
-    if (!targetUsername) { setStatusText(t('enterUsername')); return; }
-    try {
-      setStatusText(t('launching'));
-      setIsScanning(true);
-      setScanProgress({ phase: 'idle', current: 0, total: 0, message: 'Starting...', timestamp: Date.now() });
-      const updatedHistory = await addUsernameToHistory(targetUsername);
-      setUsernameHistory(updatedHistory);
-      await chrome.storage.local.set({
-        targetUsername,
-        startOnLoad: true,
-        scanProgress: { phase: 'idle', current: 0, total: 0, message: 'Launching...', timestamp: Date.now() },
-      });
-      const url = `https://www.instagram.com/${targetUsername}/`;
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab && tab.url && tab.url.includes('instagram.com')) {
-        await chrome.tabs.update(tab.id!, { url });
-      } else {
-        await chrome.tabs.create({ url });
-      }
-      setStatusText(t('scanningBtn'));
-    } catch (error) {
-      console.error('Launch Failed:', error);
-      setStatusText('Error launching');
-      setIsScanning(false);
-    }
+  const rescan = async (username: string) => {
+    setTargetUsername(username);
+    setFormError('');
+    setProgress(await startSingleScan(username));
   };
 
-  const getProgressPercent = (): number => {
-    if (!scanProgress || scanProgress.total === 0) return isScanning ? 10 : 100;
-    return Math.min(100, Math.round((scanProgress.current / scanProgress.total) * 100));
+  const scanAll = async () => {
+    if (!state) return;
+    const started = await startQueueScan(usernamesByStaleness(state));
+    if (started) setProgress(started);
   };
 
-  // No scan has completed yet -> show empty states instead of numbers
-  const hasData = stats.lastUpdated !== null;
+  const stopQueue = async () => {
+    if (!queue) return;
+    await stopQueueScan(queue, isScanning ? progress?.scanId : undefined);
+  };
 
-  // Follower quality donut chart data
-  const mutualCount = stats.mutualCount;
-  const notFollowingCount = stats.notFollowingBackCount;
-  const totalChart = mutualCount + notFollowingCount;
-  const mutualPercent = totalChart > 0 ? Math.round((mutualCount / totalChart) * 100) : 0;
-  const notFollowingPercent = totalChart > 0 ? 100 - mutualPercent : 0;
+  const stopTracking = async (accountId: string, username: string) => {
+    const message = language === 'vi'
+      ? `Ngừng theo dõi @${username} và xóa các bản quét của tài khoản này?`
+      : `Stop tracking @${username} and delete its saved scans?`;
+    if (!window.confirm(message)) return;
+    await removeAccount(accountId);
+    await reload();
+  };
 
-  const circumference = 226.2; // 2 * Math.PI * 36
-  const mutualStrokeDash = (mutualPercent / 100) * circumference;
+  const selectAccount = async (accountId: string) => {
+    await setActiveAccount(accountId);
+    await reload();
+  };
 
-  // Recent activity from the latest diff
-  const activities: { username: string; avatarUrl?: string; type: 'followed' | 'unfollowed'; label: string }[] = [
-    ...stats.newFollowersList.slice(0, 2).map(u => ({ username: u.username, avatarUrl: u.avatarUrl, type: 'followed' as const, label: 'followed you' })),
-    ...stats.lostFollowersList.slice(0, 2).map(u => ({ username: u.username, avatarUrl: u.avatarUrl, type: 'unfollowed' as const, label: 'unfollowed you' })),
+  const phaseIndex = progress ? activePhases.indexOf(progress.phase) : -1;
+  const percent = progress?.total
+    ? Math.min(100, Math.round((progress.current / progress.total) * 100))
+    : isScanning ? Math.max(8, (phaseIndex + 1) * 20) : progress?.phase === 'done' ? 100 : 0;
+
+  const activity = [
+    ...stats.newFollowersList.slice(0, 2).map((person) => ({ ...person, kind: 'new' as const })),
+    ...stats.lostFollowersList.slice(0, 2).map((person) => ({ ...person, kind: 'lost' as const })),
   ];
 
   return (
-    <div className="flex flex-col gap-4 px-4 pt-4 pb-8 transition-colors duration-200">
-      {/* ── Profile Hero ── */}
-      <section className="glass-card rounded-2xl p-5 relative overflow-hidden flex flex-col gap-4">
-        {/* ambient backlights */}
-        <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#E1306C]/10 rounded-full blur-2xl pointer-events-none animate-pulse" />
-        <div className="absolute -bottom-12 -left-12 w-32 h-32 bg-[#6366F1]/10 rounded-full blur-2xl pointer-events-none animate-pulse" />
+    <div className="ledger-page ledger-page--dashboard">
+      <header className="masthead">
+        <div>
+          <span className="eyebrow">Social ledger / v2</span>
+          <h1>Follower<br /><em>record.</em></h1>
+        </div>
+        <StatusBadge tone={hasData ? 'verified' : 'quiet'}>
+          {hasData ? (language === 'vi' ? 'Đã xác minh' : 'Verified') : (language === 'vi' ? 'Chưa có dữ liệu' : 'No record')}
+        </StatusBadge>
+      </header>
 
-        {/* top header line */}
-        <div className="flex justify-between items-center z-10">
-          <div className="flex flex-col">
-            <span className="text-[10px] tracking-widest text-lux-text-secondary font-black uppercase">Digital Curator</span>
-            <span className="text-[9px] text-[#E1306C] font-extrabold uppercase tracking-wider mt-0.5">Social Intelligence</span>
+      <section className="account-strip">
+        <Avatar
+          src={stats.avatarBase64 || stats.avatarUrl || ''}
+          username={stats.username || normalizedUsername || '?'}
+          size="md"
+        />
+        <div className="account-strip__copy">
+          <span className="eyebrow">{language === 'vi' ? 'Tài khoản đang theo dõi' : 'Active record'}</span>
+          <strong>@{stats.username || normalizedUsername || 'not-connected'}</strong>
+          <span>{hasData ? formatMoment(stats.lastUpdated, language) : (language === 'vi' ? 'Chưa từng quét' : 'Never scanned')}</span>
+        </div>
+        {hasData && <Icon name="check" className="verified-mark" size={22} />}
+      </section>
+
+      <section className="scan-console" aria-labelledby="scan-title">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">01 / Capture</span>
+            <h2 id="scan-title">{language === 'vi' ? 'Tạo bản ghi mới' : 'Create a new record'}</h2>
           </div>
-          <Link to="/settings">
-            <button className="size-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 hover:border-white/20 transition-all cursor-pointer">
-              <span className="material-symbols-outlined text-[18px] text-lux-text-primary">settings</span>
+          <span className="section-index">IG</span>
+        </div>
+
+        <div className="username-field">
+          <span aria-hidden="true">@</span>
+          <input
+            ref={inputRef}
+            value={targetUsername}
+            onChange={(event) => {
+              setTargetUsername(event.target.value);
+              setFormError('');
+            }}
+            onFocus={() => setShowHistory(usernameHistory.length > 0)}
+            disabled={isBusy}
+            placeholder="username"
+            aria-invalid={Boolean(formError)}
+            aria-describedby={formError ? 'username-error' : undefined}
+          />
+          {targetUsername && !isBusy && (
+            <button className="field-clear" onClick={() => setTargetUsername('')} aria-label="Clear username">
+              <Icon name="close" size={16} />
             </button>
-          </Link>
-        </div>
-
-        {/* profile user details */}
-        <div className="flex items-center gap-4 z-10">
-          {/* glass circle frame */}
-          <div className="relative p-0.5 rounded-full bg-gradient-to-tr from-[#E1306C] via-[#833AB4] to-[#6366F1] shadow-[0_0_12px_rgba(225,48,108,0.25)] shrink-0">
-            <div className="rounded-full bg-lux-bg p-[2px]">
-              <Avatar
-                src={stats.avatarBase64 || stats.avatarUrl || ''}
-                username={stats.username || targetUsername || '?'}
-                size="md"
-              />
-            </div>
-          </div>
-          <div className="flex flex-col min-w-0 flex-1">
-            <h2 className="text-lux-text-primary text-base font-extrabold tracking-tight truncate leading-tight">
-              {stats.username || targetUsername ? `@${stats.username || targetUsername}` : 'No account yet'}
-            </h2>
-            <p className="text-[10px] text-lux-text-secondary font-medium leading-none mt-1">
-              Instagram Intelligence Dashboard
-            </p>
-            <p className="text-[9px] text-lux-text-secondary/60 mt-1.5 font-semibold">
-              Last Sync: {stats.lastUpdated || 'Never'}
-            </p>
-          </div>
-        </div>
-
-        {/* quick metrics row */}
-        <div className="grid grid-cols-2 gap-4 border-t border-white/[0.06] pt-3.5 z-10">
-          <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-lux-text-secondary font-bold">Followers</span>
-            <span className="text-lg font-black text-lux-text-primary tracking-tight">
-              {hasData ? stats.totalFollowers.toLocaleString() : '—'}
-            </span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-lux-text-secondary font-bold">Following</span>
-            <span className="text-lg font-black text-lux-text-primary tracking-tight">
-              {hasData ? stats.totalFollowing.toLocaleString() : '—'}
-            </span>
-          </div>
-        </div>
-
-        {/* input handle + dropdown */}
-        <div className="relative z-10">
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#E1306C] material-symbols-outlined text-[16px]">
-              alternate_email
-            </span>
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Instagram username"
-              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl py-2.5 pl-9 pr-4 text-lux-text-primary font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-[#E1306C]/50 focus:border-[#E1306C]/50 transition-all placeholder-lux-text-secondary/40"
-              value={targetUsername}
-              onChange={(e) => setTargetUsername(e.target.value)}
-              onFocus={() => usernameHistory.length > 0 && setShowHistoryDropdown(true)}
-              disabled={isScanning}
-            />
-          </div>
-
-          {showHistoryDropdown && usernameHistory.length > 0 && (
-            <div
-              ref={dropdownRef}
-              className="absolute z-50 w-full mt-1 bg-lux-bg-sec border border-white/[0.08] rounded-xl shadow-xl max-h-40 overflow-y-auto"
-            >
-              <div className="flex justify-between items-center px-3 py-2 border-b border-white/[0.04]">
-                <span className="text-[8px] text-lux-text-secondary uppercase font-bold tracking-widest">{t('recent')}</span>
-                <button
-                  onClick={async () => {
-                    await clearUsernameHistory();
-                    setUsernameHistory([]);
-                    setShowHistoryDropdown(false);
-                  }}
-                  className="text-[9px] text-red-400 hover:text-red-500 font-semibold cursor-pointer"
-                >
-                  {t('clear')}
-                </button>
-              </div>
-              {usernameHistory.map((username, index) => (
-                <button
-                  key={index}
-                  onClick={() => { setTargetUsername(username); setShowHistoryDropdown(false); }}
-                  className="w-full text-left px-3 py-2 hover:bg-white/[0.04] text-lux-text-primary text-xs flex items-center gap-2 transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-lux-text-secondary text-[13px]">history</span>
-                  @{username}
-                </button>
-              ))}
-            </div>
           )}
         </div>
+        {formError && <p id="username-error" className="field-error">{formError}</p>}
 
-        {/* primary sync action */}
-        <button
-          onClick={handleStartCrawl}
-          disabled={isScanning}
-          className="w-full bg-brand-gradient hover:opacity-95 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-[0_4px_20px_rgba(225,48,108,0.2)] active:scale-[0.98] z-10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          <span className="material-symbols-outlined text-[18px]">sync</span>
-          <span>Sync Now</span>
+        {showHistory && usernameHistory.length > 0 && (
+          <div className="history-popover" ref={historyRef}>
+            <div className="history-popover__head">
+              <span>{t('recent')}</span>
+              <button onClick={async () => {
+                await clearUsernameHistory();
+                setUsernameHistory([]);
+                setShowHistory(false);
+              }}>{t('clear')}</button>
+            </div>
+            {usernameHistory.map((username) => (
+              <button key={username} onClick={() => {
+                setTargetUsername(username);
+                setShowHistory(false);
+              }}>@{username}</button>
+            ))}
+          </div>
+        )}
+
+        <button className="primary-action" onClick={startScan} disabled={isBusy}>
+          <Icon name="scan" />
+          <span>{isBusy ? (language === 'vi' ? 'Đang xác minh…' : 'Verifying…') : (language === 'vi' ? 'Bắt đầu quét' : 'Start verified scan')}</span>
+          <Icon name="arrow" />
         </button>
       </section>
 
-      {/* ── Sync Status Widget ── */}
-      {isScanning && (
-        <section className="glass-card rounded-2xl p-5 relative overflow-hidden flex flex-col gap-3">
-          <div className="absolute -top-10 -left-10 w-24 h-24 bg-[#E1306C]/5 rounded-full blur-xl pointer-events-none" />
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#E1306C] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#E1306C]" />
-              </span>
-              <span className="text-xs font-bold text-lux-text-primary">Syncing Instagram Data</span>
+      {trackedAccounts.length > 0 && (
+        <section className="tracked-section" aria-labelledby="tracked-title">
+          <div className="section-heading">
+            <div>
+              <span className="eyebrow">{language === 'vi' ? 'Nhiều tài khoản' : 'Multi-account'}</span>
+              <h2 id="tracked-title">
+                {language === 'vi' ? 'Tài khoản đang theo dõi' : 'Tracked accounts'}
+                {' '}<span className="count-chip">{trackedAccounts.length}</span>
+              </h2>
             </div>
-            <span className="text-xs font-black text-[#E1306C]">{getProgressPercent()}%</span>
-          </div>
-          
-          <div className="flex justify-between items-center text-[10px] text-lux-text-secondary font-medium">
-            <span>{statusText || 'Scraping accounts...'}</span>
-            <span>
-              {scanProgress ? `${scanProgress.current}${scanProgress.total ? ` / ${scanProgress.total}` : ''} Scanned` : ''}
-            </span>
           </div>
 
-          {/* progress bar */}
-          <div className="w-full h-[6px] bg-white/[0.04] rounded-full overflow-hidden">
-            <div
-              className="bg-brand-gradient h-full rounded-full shadow-[0_0_8px_#E1306C] transition-all duration-500 animate-pulse"
-              style={{ width: `${getProgressPercent()}%` }}
-            />
+          <div className="tracked-list">
+            {trackedAccounts.map(([id, account]) => {
+              const isActive = state?.activeAccountId === id;
+              const item = queueStatusFor(account.profile.username);
+              const { counts, completedAt } = account.latestScan;
+              return (
+                <div key={id} className={`tracked-row ${isActive ? 'is-active' : ''}`}>
+                  <button
+                    className="tracked-row__main"
+                    onClick={() => void selectAccount(id)}
+                    aria-pressed={isActive}
+                    title={language === 'vi' ? 'Xem số liệu của tài khoản này' : 'Show this account’s numbers'}
+                  >
+                    <Avatar
+                      src={account.profile.avatarBase64 || account.profile.avatarUrl}
+                      username={account.profile.username}
+                      size="sm"
+                    />
+                    <span className="tracked-row__copy">
+                      <strong>@{account.profile.username}</strong>
+                      <small>
+                        {counts.followers.toLocaleString()} {language === 'vi' ? 'người theo dõi' : 'followers'}
+                        {' · '}<b className="delta delta--up">+{counts.new}</b>
+                        {' '}<b className="delta delta--down">−{counts.lost}</b>
+                        {' · '}{formatMoment(completedAt, language)}
+                      </small>
+                    </span>
+                  </button>
+                  {item && (
+                    <StatusBadge tone={queueTone[item.status]}>
+                      {language === 'vi'
+                        ? { pending: 'Chờ', running: 'Đang quét', done: 'Xong', error: 'Lỗi', skipped: 'Bỏ qua' }[item.status]
+                        : { pending: 'Queued', running: 'Scanning', done: 'Done', error: 'Failed', skipped: 'Skipped' }[item.status]}
+                    </StatusBadge>
+                  )}
+                  <div className="tracked-row__actions">
+                    <button
+                      className="icon-button"
+                      onClick={() => void rescan(account.profile.username)}
+                      disabled={isBusy}
+                      aria-label={`${language === 'vi' ? 'Quét lại' : 'Rescan'} @${account.profile.username}`}
+                    ><Icon name="scan" size={15} /></button>
+                    <button
+                      className="icon-button"
+                      onClick={() => void stopTracking(id, account.profile.username)}
+                      disabled={isBusy}
+                      aria-label={`${language === 'vi' ? 'Ngừng theo dõi' : 'Stop tracking'} @${account.profile.username}`}
+                    ><Icon name="trash" size={15} /></button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
+          {liveQueue ? (
+            <button className="secondary-action" onClick={() => void stopQueue()}>
+              <Icon name="close" size={16} />
+              {language === 'vi' ? 'Dừng hàng đợi' : 'Stop queue'}
+            </button>
+          ) : (
+            <button
+              className="secondary-action"
+              onClick={() => void scanAll()}
+              disabled={isBusy || trackedAccounts.length < 2}
+            >
+              <Icon name="scan" size={16} />
+              {language === 'vi' ? `Quét lần lượt ${trackedAccounts.length} tài khoản` : `Scan all ${trackedAccounts.length} accounts in turn`}
+            </button>
+          )}
+          <p className="integrity-note">
+            {liveQueue?.waitingUntil
+              ? (language === 'vi'
+                ? 'Đang nghỉ giữa hai tài khoản để tránh bị Instagram giới hạn. Giữ tab Instagram mở.'
+                : 'Pausing between accounts so Instagram does not throttle you. Keep the Instagram tab open.')
+              : queue?.stopReason && queue.updatedAt > Date.now() - 60 * 60 * 1000
+                ? `${language === 'vi' ? 'Hàng đợi đã dừng: ' : 'Queue stopped: '}${queue.stopReason}`
+                : (language === 'vi'
+                  ? 'Quét lần lượt từng tài khoản, nghỉ 30–45 giây giữa các tài khoản. Cần đăng nhập Instagram và giữ tab mở.'
+                  : 'Accounts are scanned one at a time with a 30–45s pause between them. Stay logged in to Instagram and keep the tab open.')}
+          </p>
         </section>
       )}
 
-      {/* ── 2x2 Analytics Overview Grid ── */}
-      <section className="grid grid-cols-2 gap-3">
-        {/* Card 1: New Followers */}
-        <Link to="/stats?tab=new" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">New Followers</span>
-            <div className="size-6 rounded-lg bg-[#22C55E]/10 flex items-center justify-center text-[#22C55E]">
-              <span className="material-symbols-outlined text-[16px] animate-bounce">trending_up</span>
+      {(isScanning || progress?.phase === 'error' || progress?.phase === 'done') && (
+        <section className={`integrity-panel ${progress?.phase === 'error' ? 'is-error' : ''}`}>
+          <div className="integrity-panel__head">
+            <div>
+              <span className="eyebrow">Scan integrity</span>
+              <strong>{progress?.message}</strong>
             </div>
+            <span className="progress-figure">{percent}%</span>
           </div>
-          <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? `+${stats.newFollowersCount}` : '—'}</h4>
-            {hasData && stats.newFollowersCount > 0 && (
-              <span className="text-[8px] text-[#22C55E] font-bold flex items-center gap-0.5 mt-1">
-                <span className="size-1 bg-[#22C55E] rounded-full inline-block animate-ping" />
-                Gain Detected
-              </span>
-            )}
-          </div>
-        </Link>
-
-        {/* Card 2: Lost Followers */}
-        <Link to="/stats?tab=lost" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">Lost Followers</span>
-            <div className="size-6 rounded-lg bg-[#EF4444]/10 flex items-center justify-center text-[#EF4444]">
-              <span className="material-symbols-outlined text-[16px]">person_remove</span>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? stats.lostFollowersCount : '—'}</h4>
-            {hasData && stats.lostFollowersCount > 0 && (
-              <span className="text-[8px] text-[#EF4444] font-bold flex items-center gap-0.5 mt-1">
-                <span className="size-1 bg-[#EF4444] rounded-full inline-block" />
-                Alert Active
-              </span>
-            )}
-          </div>
-        </Link>
-
-        {/* Card 3: Not Following Back */}
-        <Link to="/stats?tab=notfollowing" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">Not Follow Back</span>
-            <div className="size-6 rounded-lg bg-[#F59E0B]/10 flex items-center justify-center text-[#F59E0B]">
-              <span className="material-symbols-outlined text-[16px]">person_search</span>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? stats.notFollowingBackCount : '—'}</h4>
-            {hasData && stats.notFollowingBackCount > 0 && (
-              <span className="text-[8px] text-[#F59E0B] font-bold flex items-center gap-0.5 mt-1">
-                <span className="px-1.5 py-0.5 bg-[#F59E0B]/10 rounded-full">Warning</span>
-              </span>
-            )}
-          </div>
-        </Link>
-
-        {/* Card 4: Mutual Friends */}
-        <Link to="/stats?tab=mutual" className="glass-card rounded-2xl p-4 ambient-glow flex flex-col gap-2">
-          <div className="flex justify-between items-start">
-            <span className="text-[9px] font-bold text-lux-text-secondary uppercase tracking-wider">Mutual Friends</span>
-            <div className="size-6 rounded-lg bg-[#6366F1]/10 flex items-center justify-center text-[#6366F1]">
-              <span className="material-symbols-outlined text-[16px]">group</span>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-xl font-extrabold text-lux-text-primary">{hasData ? stats.mutualCount : '—'}</h4>
-            {hasData && stats.mutualCount > 0 && (
-              <span className="text-[8px] text-[#6366F1] font-bold flex items-center gap-0.5 mt-1">
-                <span className="px-1.5 py-0.5 bg-[#6366F1]/10 rounded-full">Connected</span>
-              </span>
-            )}
-          </div>
-        </Link>
-      </section>
-
-      {/* ── Follower Quality Analytics ── */}
-      <section className="glass-card rounded-2xl p-5 relative overflow-hidden">
-        <h3 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider mb-4">Follower Quality</h3>
-        <div className="flex items-center justify-between gap-6">
-          <div className="relative flex-shrink-0 flex items-center justify-center">
-            {/* SVG Donut Chart */}
-            <svg viewBox="0 0 100 100" className="w-20 h-20 transform -rotate-90">
-              <circle
-                cx="50"
-                cy="50"
-                r="36"
-                fill="transparent"
-                stroke="rgba(255,255,255,0.03)"
-                strokeWidth="11"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="36"
-                fill="transparent"
-                stroke="#6366F1"
-                strokeWidth="11"
-                strokeDasharray={226.2}
-                strokeDashoffset={0}
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="36"
-                fill="transparent"
-                stroke="#E1306C"
-                strokeWidth="11"
-                strokeDasharray={226.2}
-                strokeDashoffset={226.2 - mutualStrokeDash}
-              />
-            </svg>
-            <div className="absolute flex flex-col items-center justify-center">
-              <span className="text-xs font-black text-lux-text-primary leading-none">{mutualPercent}%</span>
-              <span className="text-[7px] text-lux-text-secondary/60 mt-0.5 uppercase font-bold">Mutual</span>
-            </div>
-          </div>
-
-          <div className="flex-1 space-y-3">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#6366F1]" />
-                <span className="text-[10px] font-extrabold text-lux-text-primary">Mutual Friends</span>
-              </div>
-              <span className="text-[11px] text-lux-text-secondary pl-4 font-semibold mt-0.5">
-                {mutualCount} ({mutualPercent}%)
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#E1306C]" />
-                <span className="text-[10px] font-extrabold text-lux-text-primary">Not Following Back</span>
-              </div>
-              <span className="text-[11px] text-lux-text-secondary pl-4 font-semibold mt-0.5">
-                {notFollowingCount} ({notFollowingPercent}%)
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Recent Activity Feed ── */}
-      <section className="space-y-3">
-        <h3 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider">Recent Activity</h3>
-        <div className="flex flex-col gap-2">
-          {activities.length === 0 && (
-            <div className="glass-card rounded-xl p-4 text-center text-[10px] text-lux-text-secondary font-semibold">
-              {hasData ? 'No changes since the previous scan.' : 'No activity yet. Run a scan to get started.'}
-            </div>
+          <div className="progress-track"><span style={{ width: `${percent}%` }} /></div>
+          <ol className="integrity-rail">
+            {[
+              ['resolving', language === 'vi' ? 'Tài khoản' : 'Account'],
+              ['followers', 'Followers'],
+              ['following', 'Following'],
+              ['processing', language === 'vi' ? 'Lưu bản ghi' : 'Commit'],
+            ].map(([phase, label], index) => {
+              const completed = progress?.phase === 'done' || phaseIndex > index;
+              const current = progress?.phase === phase;
+              return (
+                <li key={phase} className={completed ? 'is-complete' : current ? 'is-current' : ''}>
+                  <span>{completed ? <Icon name="check" size={12} /> : index + 1}</span>
+                  <small>{label}</small>
+                </li>
+              );
+            })}
+          </ol>
+          {progress?.phase === 'error' && (
+            <p className="integrity-note">{language === 'vi'
+              ? 'Bản ghi đã xác minh trước đó vẫn được giữ nguyên.'
+              : 'Your previous verified record remains unchanged.'}</p>
           )}
-          {activities.map((act, i) => (
-            <div key={i} className="glass-card rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <Avatar
-                  src={act.avatarUrl}
-                  username={act.username}
-                  size="sm"
-                  hasStory={act.type === 'followed'}
-                  className="w-7 h-7 shrink-0"
-                />
-                <div className="min-w-0">
-                  <span className="font-extrabold text-lux-text-primary truncate block text-xs">@{act.username}</span>
-                  <span className="text-[9px] text-lux-text-secondary">{act.label}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+          {isScanning && progress?.scanId && !liveQueue && (
+            <button
+              className="scan-cancel"
+              onClick={() => chrome.storage.local.set({ cancelScanId: progress.scanId })}
+            >{language === 'vi' ? 'Dừng lần quét này' : 'Cancel this scan'}</button>
+          )}
+        </section>
+      )}
+
+      <section className="metric-section">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">02 / Snapshot</span>
+            <h2>{language === 'vi' ? 'Số liệu đã xác minh' : 'Verified totals'}</h2>
+          </div>
+        </div>
+        <div className="metric-grid">
+          <Link to="/stats?tab=mutual" className="metric-cell metric-cell--wide">
+            <span>{t('followers')}</span>
+            <strong>{hasData ? stats.totalFollowers.toLocaleString() : '—'}</strong>
+            <small>{stats.mutualCount.toLocaleString()} {language === 'vi' ? 'kết nối hai chiều' : 'mutual connections'}</small>
+          </Link>
+          <div className="metric-cell">
+            <span>{t('following')}</span>
+            <strong>{hasData ? stats.totalFollowing.toLocaleString() : '—'}</strong>
+          </div>
+          <Link to="/stats?tab=new" className="metric-cell metric-cell--positive">
+            <span>{t('new')}</span>
+            <strong>{hasData ? `+${stats.newFollowersCount}` : '—'}</strong>
+          </Link>
+          <Link to="/stats?tab=lost" className="metric-cell metric-cell--negative">
+            <span>{t('lost')}</span>
+            <strong>{hasData ? stats.lostFollowersCount : '—'}</strong>
+          </Link>
+          <Link to="/stats?tab=notfollowing" className="metric-cell">
+            <span>{t('notFollowing')}</span>
+            <strong>{hasData ? stats.notFollowingBackCount : '—'}</strong>
+          </Link>
+          <Link to="/stats?tab=newfollowing" className="metric-cell metric-cell--full metric-cell--positive">
+            <span>{t('newFollowing')}</span>
+            <strong>{hasData ? `+${stats.newFollowingCount}` : '—'}</strong>
+            <small>{language === 'vi' ? 'Tài khoản bạn vừa follow kể từ lần quét trước' : 'Accounts you followed since the previous scan'}</small>
+          </Link>
         </div>
       </section>
 
-      {/* ── AI Recommendations Section ── */}
-      <section className="glass-card rounded-2xl p-5 border border-amber-500/20 relative overflow-hidden flex flex-col gap-4">
-        {/* ambient amber light */}
-        <div className="absolute -top-10 -right-10 w-20 h-20 bg-amber-500/5 rounded-full blur-xl pointer-events-none" />
-        <div className="flex items-start gap-3">
-          <div className="size-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-            <span className="material-symbols-outlined text-[18px]">smart_toy</span>
+      <section className="activity-section">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">03 / Delta</span>
+            <h2>{language === 'vi' ? 'Thay đổi gần nhất' : 'Latest changes'}</h2>
           </div>
-          <div className="flex flex-col">
-            <h4 className="text-[10px] font-bold text-lux-text-primary uppercase tracking-wider">Account Recommendations</h4>
-            <p className="text-xs text-lux-text-secondary mt-1">
-              {hasData ? `${notFollowingCount} accounts don't follow you back.` : 'Run a scan to see recommendations.'}
-            </p>
+          <Link to="/stats" className="text-link">{language === 'vi' ? 'Xem tất cả' : 'View all'} <Icon name="arrow" size={14} /></Link>
+        </div>
+        {activity.length === 0 ? (
+          <p className="quiet-copy">{hasData
+            ? (language === 'vi' ? 'Không có thay đổi so với lần quét trước.' : 'No changes against the previous record.')
+            : (language === 'vi' ? 'Bắt đầu một lần quét để tạo đường cơ sở.' : 'Run a scan to establish your baseline.')}</p>
+        ) : (
+          <div className="activity-list">
+            {activity.map((person) => (
+              <a
+                key={`${person.kind}-${person.id}`}
+                href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={openInBackgroundTab}
+              >
+                <Avatar src={person.avatarUrl} username={person.username} size="sm" />
+                <span><strong>@{person.username}</strong><small>{person.fullName || 'Instagram account'}</small></span>
+                <StatusBadge tone={person.kind === 'new' ? 'verified' : 'error'}>
+                  {person.kind === 'new' ? `+${t('new')}` : `−${t('lost')}`}
+                </StatusBadge>
+              </a>
+            ))}
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 mt-1">
-          <Link
-            to="/stats?tab=notfollowing"
-            className="py-2.5 rounded-xl border border-white/10 hover:border-white/20 text-center font-bold text-[10px] text-lux-text-primary hover:bg-white/5 transition-all"
-          >
-            View Accounts
-          </Link>
-          <Link
-            to="/stats?tab=notfollowing"
-            className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-center font-bold text-[10px] text-lux-bg transition-all shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
-          >
-            Unfollow Selected
-          </Link>
-        </div>
+        )}
       </section>
     </div>
   );

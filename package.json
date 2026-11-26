@@ -1,12 +1,16 @@
 {
   "name": "instagram-tracker-v3",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && node scripts/copy-content.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node scripts/test-core.cjs",
+    "icons": "powershell -ExecutionPolicy Bypass -File scripts/generate-icons.ps1",
+    "check": "npm run test && npm run build"
   },
   "keywords": [],
   "author": "",

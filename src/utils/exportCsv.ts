@@ -13,12 +13,17 @@ export function exportToCsv(data: ExportData[], filename: string, status: Status
     const headers = ['Username', 'Full Name', 'Status', 'Profile URL'];
 
     // Convert data to CSV rows
+    const sanitize = (value: string): string => {
+        const normalized = String(value ?? '');
+        return /^[=+\-@\t\r]/.test(normalized) ? `'${normalized}` : normalized;
+    };
+
     const rows = data.map(item => [
         item.username,
         item.fullName || '',
         status,
         `https://instagram.com/${item.username}`
-    ].map(cell => `"${cell.replace(/"/g, '""')}"`).join(','));
+    ].map(cell => `"${sanitize(cell).replace(/"/g, '""')}"`).join(','));
 
     // Combine header + rows
     const csvContent = [headers.join(','), ...rows].join('\n');
