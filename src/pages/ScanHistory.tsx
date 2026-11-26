@@ -4,6 +4,7 @@ import { Icon } from '../components/Icon';
 import { EmptyState, PageHeader, StatusBadge, formatMoment } from '../components/LedgerUI';
 import { useLanguage } from '../hooks/useLanguage';
 import type { TrackerStateV2 } from '../types';
+import { openInBackgroundTab } from '../utils/openInBackgroundTab';
 import { getTrackerState, TRACKER_STATE_KEY } from '../utils/trackerStorage';
 
 const ScanHistory = () => {
@@ -145,6 +146,7 @@ const ScanHistory = () => {
                                 href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
                                 target="_blank"
                                 rel="noreferrer"
+                                onClick={openInBackgroundTab}
                               >
                                 <Avatar src={person.avatarUrl} username={person.username} size="sm" />
                                 <span>

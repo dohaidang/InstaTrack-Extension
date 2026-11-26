@@ -7,6 +7,7 @@ import { useFollowerData } from '../hooks/useFollowerData';
 import { useLanguage } from '../hooks/useLanguage';
 import type { Follower, StatusType } from '../types';
 import { exportToCsv } from '../utils/exportCsv';
+import { openInBackgroundTab } from '../utils/openInBackgroundTab';
 
 type TabType = StatusType;
 const PAGE_SIZE = 80;
@@ -186,6 +187,7 @@ const AccountRow = ({
     href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
     target="_blank"
     rel="noreferrer"
+    onClick={openInBackgroundTab}
   >
     <span className="account-row__index">{String(index).padStart(2, '0')}</span>
     <Avatar src={person.avatarUrl} username={person.username} size="sm" />

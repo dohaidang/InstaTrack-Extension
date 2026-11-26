@@ -14,6 +14,7 @@ import {
   stopQueueScan,
   usernamesByStaleness,
 } from '../utils/scanLauncher';
+import { openInBackgroundTab } from '../utils/openInBackgroundTab';
 import { removeAccount, setActiveAccount } from '../utils/trackerStorage';
 import { addUsernameToHistory, clearUsernameHistory, getUsernameHistory } from '../utils/usernameHistory';
 
@@ -413,6 +414,7 @@ const Dashboard = () => {
                 href={`https://www.instagram.com/${encodeURIComponent(person.username)}/`}
                 target="_blank"
                 rel="noreferrer"
+                onClick={openInBackgroundTab}
               >
                 <Avatar username={person.username} size="sm" />
                 <span><strong>@{person.username}</strong><small>{person.fullName || 'Instagram account'}</small></span>
