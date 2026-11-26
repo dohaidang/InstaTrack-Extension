@@ -416,7 +416,7 @@ const Dashboard = () => {
                 rel="noreferrer"
                 onClick={openInBackgroundTab}
               >
-                <Avatar username={person.username} size="sm" />
+                <Avatar src={person.avatarUrl} username={person.username} size="sm" />
                 <span><strong>@{person.username}</strong><small>{person.fullName || 'Instagram account'}</small></span>
                 <StatusBadge tone={person.kind === 'new' ? 'verified' : 'error'}>
                   {person.kind === 'new' ? `+${t('new')}` : `−${t('lost')}`}

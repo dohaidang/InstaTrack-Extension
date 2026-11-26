@@ -672,10 +672,15 @@
 
         const people = { ...(previousAccount?.people || {}) };
         [...followers, ...following].forEach(person => {
-            people[String(person.id)] = {
-                id: String(person.id),
+            const id = String(person.id);
+            // Instagram CDN links are signed and expire, so every scan refreshes them. If a scan
+            // did not return one for this person, keep the older link rather than losing the picture.
+            const avatarUrl = person.avatarUrl || people[id]?.avatarUrl;
+            people[id] = {
+                id,
                 username: person.username,
-                fullName: person.fullName || ''
+                fullName: person.fullName || '',
+                ...(avatarUrl ? { avatarUrl } : {})
             };
         });
 
@@ -755,6 +760,8 @@
 
             nextState.accounts[ownerId].history = history.slice(0, 5);
             nextState.accounts[ownerId].profile.avatarBase64 = null;
+            // Pictures are the cheapest thing to give up: the list still works with initials
+            Object.values(people).forEach(person => { delete person.avatarUrl; });
             prunePeople(nextState.accounts[ownerId].history);
             try {
                 await chrome.storage.local.set({ [TRACKER_STATE_KEY]: nextState });

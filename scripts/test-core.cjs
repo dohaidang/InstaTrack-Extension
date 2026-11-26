@@ -273,6 +273,32 @@ const baseState = () => ({
   await loadScanner(store)(scanInput('B', 'bravo', { following: [savePerson('7', 'seven')] }));
   assert.deepEqual(plain(store.values.trackerStateV2.accounts.B.latestScan.diffs.newFollowing), []);
 
+  // Other people's avatars are stored, so lists can show pictures and not only initials
+  store = makeStore({ trackerStateV2: { schemaVersion: 2, activeAccountId: null, accounts: {} } });
+  await loadScanner(store)(scanInput('D', 'delta', {
+    followers: [{ id: '10', username: 'ten', fullName: 'Ten', avatarUrl: 'https://cdn.example/ten-1.jpg' }],
+    following: [{ id: '11', username: 'eleven', fullName: '' }],
+  }));
+  let peopleStored = store.values.trackerStateV2.accounts.D.people;
+  assert.equal(peopleStored['10'].avatarUrl, 'https://cdn.example/ten-1.jpg');
+  assert.equal('avatarUrl' in peopleStored['11'], false);
+
+  // A rescan refreshes an expired link, and keeps the old one when none comes back
+  await loadScanner(store)(scanInput('D', 'delta', {
+    scanId: 'new-D2',
+    followers: [{ id: '10', username: 'ten', fullName: 'Ten', avatarUrl: 'https://cdn.example/ten-2.jpg' }],
+    following: [{ id: '11', username: 'eleven', fullName: '', avatarUrl: 'https://cdn.example/eleven.jpg' }],
+  }));
+  peopleStored = store.values.trackerStateV2.accounts.D.people;
+  assert.equal(peopleStored['10'].avatarUrl, 'https://cdn.example/ten-2.jpg');
+  assert.equal(peopleStored['11'].avatarUrl, 'https://cdn.example/eleven.jpg');
+  await loadScanner(store)(scanInput('D', 'delta', {
+    scanId: 'new-D3',
+    followers: [{ id: '10', username: 'ten', fullName: 'Ten' }],
+    following: [],
+  }));
+  assert.equal(store.values.trackerStateV2.accounts.D.people['10'].avatarUrl, 'https://cdn.example/ten-2.jpg');
+
   // Queue run on a brand-new account with nothing active yet still selects it
   store = makeStore({ trackerStateV2: { schemaVersion: 2, activeAccountId: null, accounts: {} } });
   await loadScanner(store)(scanInput('C', 'charlie', { keepActive: true }));
