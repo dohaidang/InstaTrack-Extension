@@ -557,15 +557,29 @@
         return { schemaVersion: 2, activeAccountId: null, accounts: {} };
     }
 
-    function calculateDiffIds(followerIds, followingIds, previousFollowerIds = [], hasBaseline = true) {
+    /**
+     * @param previousFollowingIds the following list of the previous scan, or null when it is
+     *   unknown. Without it there is nothing to compare against, so `newFollowing` stays empty
+     *   instead of wrongly reporting every followed account as new.
+     */
+    function calculateDiffIds(
+        followerIds,
+        followingIds,
+        previousFollowerIds = [],
+        hasBaseline = true,
+        previousFollowingIds = null
+    ) {
         const followerSet = new Set(followerIds);
         const followingSet = new Set(followingIds);
         const previousFollowerSet = new Set(previousFollowerIds);
+        const previousFollowingSet = new Set(previousFollowingIds || []);
+        const hasFollowingBaseline = hasBaseline && Array.isArray(previousFollowingIds);
         return {
             new: hasBaseline ? followerIds.filter(id => !previousFollowerSet.has(id)) : [],
             lost: hasBaseline ? previousFollowerIds.filter(id => !followerSet.has(id)) : [],
             mutual: followerIds.filter(id => followingSet.has(id)),
-            notFollowingBack: followingIds.filter(id => !followerSet.has(id))
+            notFollowingBack: followingIds.filter(id => !followerSet.has(id)),
+            newFollowing: hasFollowingBaseline ? followingIds.filter(id => !previousFollowingSet.has(id)) : []
         };
     }
 
@@ -648,7 +662,13 @@
         const previousFollowerIds = previousScan?.followerIds || [];
         const followerIds = followers.map(person => String(person.id));
         const followingIds = following.map(person => String(person.id));
-        const diffIds = calculateDiffIds(followerIds, followingIds, previousFollowerIds, Boolean(previousScan));
+        const diffIds = calculateDiffIds(
+            followerIds,
+            followingIds,
+            previousFollowerIds,
+            Boolean(previousScan),
+            Array.isArray(previousScan?.followingIds) ? previousScan.followingIds : null
+        );
 
         const people = { ...(previousAccount?.people || {}) };
         [...followers, ...following].forEach(person => {
@@ -666,7 +686,8 @@
             new: diffIds.new.length,
             lost: diffIds.lost.length,
             mutual: diffIds.mutual.length,
-            notFollowingBack: diffIds.notFollowingBack.length
+            notFollowingBack: diffIds.notFollowingBack.length,
+            newFollowing: diffIds.newFollowing.length
         };
         const latestScan = {
             id: scanId,

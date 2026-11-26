@@ -15,6 +15,7 @@ const tabFromParam = (value: string | null): TabType => {
   if (value === 'lost') return 'Lost';
   if (value === 'new') return 'New';
   if (value === 'notfollowing') return 'Not Following Back';
+  if (value === 'newfollowing') return 'New Following';
   return 'Mutual';
 };
 
@@ -23,6 +24,7 @@ const paramFromTab = (tab: TabType) => ({
   Lost: 'lost',
   New: 'new',
   'Not Following Back': 'notfollowing',
+  'New Following': 'newfollowing',
 }[tab]);
 
 const FollowerStats = () => {
@@ -39,24 +41,27 @@ const FollowerStats = () => {
     setVisibleCount(PAGE_SIZE);
   }, [params]);
 
-  const categories: TabType[] = ['Mutual', 'Lost', 'New', 'Not Following Back'];
+  const categories: TabType[] = ['Mutual', 'Lost', 'New', 'New Following', 'Not Following Back'];
   const listMap: Record<TabType, Follower[]> = {
     Mutual: stats.mutualList,
     Lost: stats.lostFollowersList,
     New: stats.newFollowersList,
     'Not Following Back': stats.notFollowingBackList,
+    'New Following': stats.newFollowingList,
   };
   const countMap: Record<TabType, number> = {
     Mutual: stats.mutualCount,
     Lost: stats.lostFollowersCount,
     New: stats.newFollowersCount,
     'Not Following Back': stats.notFollowingBackCount,
+    'New Following': stats.newFollowingCount,
   };
   const labelMap: Record<TabType, string> = {
     Mutual: t('mutual'),
     Lost: t('lost'),
     New: t('new'),
     'Not Following Back': t('notFollowing'),
+    'New Following': t('newFollowing'),
   };
 
   const filtered = useMemo(() => {
@@ -188,7 +193,7 @@ const AccountRow = ({
       <strong>@{person.username}</strong>
       <small>{person.fullName || 'Instagram account'}</small>
     </span>
-    <StatusBadge tone={status === 'Lost' ? 'error' : status === 'New' ? 'verified' : 'quiet'}>
+    <StatusBadge tone={status === 'Lost' ? 'error' : status === 'New' || status === 'New Following' ? 'verified' : 'quiet'}>
       {statusLabel}
     </StatusBadge>
     <Icon name="external" size={15} />

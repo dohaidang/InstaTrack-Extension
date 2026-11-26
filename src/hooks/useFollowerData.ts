@@ -10,11 +10,13 @@ export const useFollowerData = () => {
         lostFollowersCount: 0,
         mutualCount: 0,
         notFollowingBackCount: 0,
+        newFollowingCount: 0,
 
         newFollowersList: [],
         lostFollowersList: [],
         mutualList: [],
         notFollowingBackList: [],
+        newFollowingList: [],
 
         lastUpdated: null,
         username: null,
@@ -44,11 +46,13 @@ export const useFollowerData = () => {
                 lostFollowersCount: scan?.counts.lost || 0,
                 mutualCount: scan?.counts.mutual || 0,
                 notFollowingBackCount: scan?.counts.notFollowingBack || 0,
+                newFollowingCount: scan?.counts.newFollowing || 0,
 
                 newFollowersList: resolve(scan?.diffs.new),
                 lostFollowersList: resolve(scan?.diffs.lost),
                 mutualList: resolve(scan?.diffs.mutual),
                 notFollowingBackList: resolve(scan?.diffs.notFollowingBack),
+                newFollowingList: resolve(scan?.diffs.newFollowing),
 
                 lastUpdated: scan?.completedAt || null,
                 username: ownerProfile?.username || null,

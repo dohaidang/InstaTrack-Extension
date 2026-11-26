@@ -385,6 +385,11 @@ const Dashboard = () => {
             <span>{t('notFollowing')}</span>
             <strong>{hasData ? stats.notFollowingBackCount : '—'}</strong>
           </Link>
+          <Link to="/stats?tab=newfollowing" className="metric-cell metric-cell--full metric-cell--positive">
+            <span>{t('newFollowing')}</span>
+            <strong>{hasData ? `+${stats.newFollowingCount}` : '—'}</strong>
+            <small>{language === 'vi' ? 'Tài khoản bạn vừa follow kể từ lần quét trước' : 'Accounts you followed since the previous scan'}</small>
+          </Link>
         </div>
       </section>
 

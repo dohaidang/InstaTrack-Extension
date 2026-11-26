@@ -27,8 +27,8 @@ export function installChromeMock(): void {
           reported: { followers: 1248, following: 563 },
           fetched: { followers: 1248, following: 563 },
           followerIds: ['1', '2'], followingIds: ['1', '3'],
-          diffs: { new: ['2'], lost: ['3'], mutual: ['1'], notFollowingBack: ['3'] },
-          counts: { followers: 1248, following: 563, new: 12, lost: 4, mutual: 402, notFollowingBack: 161 },
+          diffs: { new: ['2'], lost: ['3'], mutual: ['1'], notFollowingBack: ['3'], newFollowing: ['3'] },
+          counts: { followers: 1248, following: 563, new: 12, lost: 4, mutual: 402, notFollowingBack: 161, newFollowing: 1 },
         },
         history: [
           {

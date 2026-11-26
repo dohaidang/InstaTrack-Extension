@@ -24,6 +24,8 @@ export interface ScanCounts {
     lost: number;
     mutual: number;
     notFollowingBack: number;
+    /** Accounts followed since the previous scan. Absent on records saved before this field existed. */
+    newFollowing?: number;
 }
 
 export interface ScanDiffIds {
@@ -31,6 +33,8 @@ export interface ScanDiffIds {
     lost: string[];
     mutual: string[];
     notFollowingBack: string[];
+    /** Accounts followed since the previous scan. Absent on records saved before this field existed. */
+    newFollowing?: string[];
 }
 
 export interface ScanRecord {
@@ -76,11 +80,13 @@ export interface Stats {
     lostFollowersCount: number;
     mutualCount: number;
     notFollowingBackCount: number;
+    newFollowingCount: number;
 
     newFollowersList: Follower[];
     lostFollowersList: Follower[];
     mutualList: Follower[];
     notFollowingBackList: Follower[];
+    newFollowingList: Follower[];
 
     lastUpdated: string | null;
     username: string | null;
@@ -137,4 +143,4 @@ export interface SnapshotEntry {
     lostCount: number;
 }
 
-export type StatusType = 'Mutual' | 'Lost' | 'New' | 'Not Following Back';
+export type StatusType = 'Mutual' | 'Lost' | 'New' | 'Not Following Back' | 'New Following';

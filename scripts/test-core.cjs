@@ -40,7 +40,7 @@ assert.equal(isAcceptableListCount(10, 0), true);
 
 assert.deepEqual(
   JSON.parse(JSON.stringify(calculateDiffIds(['1', '2'], ['2', '3'], [], false))),
-  { new: [], lost: [], mutual: ['2'], notFollowingBack: ['3'] },
+  { new: [], lost: [], mutual: ['2'], notFollowingBack: ['3'], newFollowing: [] },
 );
 
 const migrated = migrateLegacyState({
@@ -79,7 +79,29 @@ assert.deepEqual(
 
 assert.deepEqual(
   JSON.parse(JSON.stringify(calculateDiffIds(['2', '4'], ['2', '3'], ['1', '2'], true))),
-  { new: ['4'], lost: ['1'], mutual: ['2'], notFollowingBack: ['3'] },
+  // No previous following list passed: nothing to compare, so no bogus "new following"
+  { new: ['4'], lost: ['1'], mutual: ['2'], notFollowingBack: ['3'], newFollowing: [] },
+);
+
+// New following = followed now, but not in the previous scan's following list
+assert.deepEqual(
+  JSON.parse(JSON.stringify(calculateDiffIds(['2', '4'], ['2', '3', '5'], ['1', '2'], true, ['2', '3']))).newFollowing,
+  ['5'],
+);
+// Unfollowing someone is not "new following"
+assert.deepEqual(
+  JSON.parse(JSON.stringify(calculateDiffIds(['2'], ['2'], ['2'], true, ['2', '3']))).newFollowing,
+  [],
+);
+// First scan has no baseline, even if a previous list is supplied
+assert.deepEqual(
+  JSON.parse(JSON.stringify(calculateDiffIds(['2'], ['2', '3'], [], false, []))).newFollowing,
+  [],
+);
+// An empty previous following list is a real baseline: everything followed since is new
+assert.deepEqual(
+  JSON.parse(JSON.stringify(calculateDiffIds(['2'], ['2', '3'], ['2'], true, []))).newFollowing,
+  ['2', '3'],
 );
 
 // ── Multi-account: scan queue ────────────────────────────────────────────────
@@ -220,6 +242,36 @@ const baseState = () => ({
   store = makeStore({ trackerStateV2: baseState() });
   await loadScanner(store)(scanInput('B', 'bravo'));
   assert.equal(store.values.trackerStateV2.activeAccountId, 'B');
+
+  // A rescan stores who was newly followed since the previous scan, with a matching count
+  store = makeStore({
+    trackerStateV2: {
+      schemaVersion: 2,
+      activeAccountId: 'A',
+      accounts: {
+        A: {
+          ...existingAccount('A', 'alpha'),
+          latestScan: {
+            ...existingAccount('A', 'alpha').latestScan,
+            followerIds: ['9'],
+            followingIds: ['7'],
+          },
+        },
+      },
+    },
+  });
+  await loadScanner(store)(scanInput('A', 'alpha', {
+    following: [savePerson('7', 'seven'), savePerson('8', 'eight')],
+  }));
+  const rescanned = store.values.trackerStateV2.accounts.A.latestScan;
+  assert.deepEqual(plain(rescanned.diffs.newFollowing), ['8']);
+  assert.equal(rescanned.counts.newFollowing, 1);
+
+  // A previous record from before this feature (no followingIds at all) reports none rather than everything
+  store = makeStore({ trackerStateV2: baseState() });
+  delete store.values.trackerStateV2.accounts.B.latestScan.followingIds;
+  await loadScanner(store)(scanInput('B', 'bravo', { following: [savePerson('7', 'seven')] }));
+  assert.deepEqual(plain(store.values.trackerStateV2.accounts.B.latestScan.diffs.newFollowing), []);
 
   // Queue run on a brand-new account with nothing active yet still selects it
   store = makeStore({ trackerStateV2: { schemaVersion: 2, activeAccountId: null, accounts: {} } });

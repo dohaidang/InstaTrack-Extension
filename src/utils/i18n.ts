@@ -63,6 +63,7 @@ export const translations = {
         mutual: 'Mutual',
         lost: 'Lost',
         new: 'New',
+        newFollowing: 'New Following',
         notFollowing: 'Not Following Back',
 
         // History
@@ -143,6 +144,7 @@ export const translations = {
         mutual: 'Bạn chung',
         lost: 'Đã mất',
         new: 'Mới',
+        newFollowing: 'Follow mới',
         notFollowing: 'Không follow lại',
 
         // History

@@ -583,6 +583,10 @@ a {
   min-height: 193px;
 }
 
+.metric-cell--full {
+  grid-column: 1 / -1;
+}
+
 .metric-cell--wide strong {
   margin-top: 24px;
   font-size: 42px;
@@ -787,7 +791,7 @@ a {
 
 .category-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(76px, 1fr));
+  grid-template-columns: repeat(5, minmax(76px, 1fr));
   gap: 0;
   overflow-x: auto;
   margin: 0 -18px 18px;
